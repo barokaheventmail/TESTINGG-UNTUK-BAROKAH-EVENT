@@ -51,13 +51,34 @@ export function BackLink({ href='/', label='Kembali' }: { href?: string; label?:
 
 export function SectionHeading({ label, title, text }: { label:string; title:string; text?:string }) { return <div className="mb-9 max-w-2xl"><p className="eyebrow mb-2">{label}</p><h2 className="text-3xl font-bold text-[#1b3555] md:text-4xl">{title}</h2>{text&&<p className="mt-3 leading-relaxed text-[#657080]">{text}</p>}</div> }
 
+function TrustLogo({ src, caption, fallback }: { src: string; caption?: string; fallback: React.ReactNode }) {
+  const [loaded, setLoaded] = useState(true)
+  if (!loaded) return <span className="font-bold text-[#1b4f9c]">{fallback}</span>
+  return (
+    <span className="inline-flex flex-col items-center gap-1">
+      <img src={src} alt="" height={36} className="h-9 w-auto object-contain" onError={() => setLoaded(false)} />
+      {caption && <small className="text-[9px] font-normal uppercase tracking-wider text-[#657080]">{caption}</small>}
+    </span>
+  )
+}
+
 function TrustItems() {
   return (
     <>
       <p className="text-xs font-bold uppercase tracking-wider text-[#657080]">Dipercaya & berizin</p>
-      <span className="font-bold text-[#1b4f9c]">ASITA <small className="block text-[9px] font-normal text-[#657080]">MEMBER</small></span>
-      <span className="font-bold text-[#2ca84a]">Wonderful Indonesia</span>
-      <span className="font-bold text-[#1b4f9c]">ANCOL <small className="block text-[9px] font-normal text-[#657080]">OFFICIAL AGENT</small></span>
+      <TrustLogo
+        src="/logo-asita.png"
+        caption="Member"
+        fallback={<>ASITA <small className="block text-[9px] font-normal text-[#657080]">MEMBER</small></>}
+      />
+      <TrustLogo
+        src="/logo-wonderful.png"
+        fallback={<span className="text-[#2ca84a]">Wonderful Indonesia</span>}
+      />
+      <TrustLogo
+        src="/logo-barokah.png"
+        fallback={<span className="text-[#1b4f9c]">Barokah Tour & Travel</span>}
+      />
     </>
   )
 }
