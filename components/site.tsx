@@ -83,7 +83,67 @@ export function TrustStrip() {
   )
 }
 
-export function Footer(){return <footer id="kontak" className="bg-[#163d78] py-12 text-white"><div className="container-wide grid gap-10 md:grid-cols-[1.4fr_1fr_1.2fr]"><div><Logo light/><p className="mt-5 max-w-xs text-sm leading-relaxed text-white/70">Mitra perjalanan terpercaya dari Sukabumi untuk menjelajah Indonesia bersama keluarga, sekolah, dan perusahaan.</p></div><div><h3 className="mb-4 font-sans text-sm font-bold uppercase tracking-wider">Tautan Cepat</h3><div className="flex flex-col gap-3 text-sm text-white/70"><Link href="/#paket">Paket Wisata</Link><Link href="/panduan">Panduan Peserta</Link><Link href="/#tentang">Tentang Kami</Link></div></div><div><h3 className="mb-4 font-sans text-sm font-bold uppercase tracking-wider">Hubungi Kami</h3><div className="space-y-2 text-sm text-white/70"><p>Graha Barokah, Jl. Cisaat Sukamanah, Kab. Sukabumi 43152</p><p>0859-3000-5544 / 0857-3122-2878</p><p>adminbarokahtour@gmail.com</p></div></div></div><div className="container-wide mt-10 border-t border-white/15 pt-5 text-xs text-white/50">© {new Date().getFullYear()} PT. Bina Barokah Sejahtera. Semua hak dilindungi.</div></footer>}
+function SocialIcon({ name }: { name: 'youtube' | 'tiktok' | 'instagram' }) {
+  if (name === 'youtube') return (
+    <span className="relative block h-7 w-7">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" className="absolute inset-0 h-7 w-7 text-white/70 transition-all duration-300 group-hover:opacity-0 group-hover:scale-110" aria-hidden>
+        <rect x="2" y="5.6" width="20" height="12.8" rx="3.6" />
+        <path d="m10.2 9.3 4.6 2.7-4.6 2.7z" />
+      </svg>
+      <svg viewBox="0 0 24 24" className="absolute inset-0 h-7 w-7 scale-75 opacity-0 transition-all duration-300 group-hover:scale-100 group-hover:opacity-100" aria-hidden>
+        <rect x="2" y="5.6" width="20" height="12.8" rx="3.6" fill="#FF0000" />
+        <path d="m10.2 9.4 4.8 2.6-4.8 2.6z" fill="#fff" />
+      </svg>
+    </span>
+  )
+  if (name === 'tiktok') return (
+    <span className="relative block h-7 w-7">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" className="absolute inset-0 h-7 w-7 text-white/70 transition-all duration-300 group-hover:opacity-0 group-hover:scale-110" aria-hidden>
+        <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z" />
+      </svg>
+      <svg viewBox="0 0 24 24" className="absolute inset-0 h-7 w-7 scale-75 opacity-0 transition-all duration-300 group-hover:scale-100 group-hover:opacity-100" aria-hidden>
+        <defs>
+          <linearGradient id="ttGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#25F4EE" />
+            <stop offset="100%" stopColor="#FE2C55" />
+          </linearGradient>
+        </defs>
+        <path fill="url(#ttGrad)" d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z" />
+      </svg>
+    </span>
+  )
+  return (
+    <span className="relative block h-7 w-7">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" className="absolute inset-0 h-7 w-7 text-white/70 transition-all duration-300 group-hover:opacity-0 group-hover:scale-110" aria-hidden>
+        <rect x="2.2" y="2.2" width="19.6" height="19.6" rx="5.4" />
+        <circle cx="12" cy="12" r="4.4" />
+        <circle cx="17.2" cy="6.8" r="1.1" fill="currentColor" stroke="none" />
+      </svg>
+      <svg viewBox="0 0 24 24" className="absolute inset-0 h-7 w-7 scale-75 opacity-0 transition-all duration-300 group-hover:scale-100 group-hover:opacity-100" aria-hidden>
+        <defs>
+          <linearGradient id="igGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#FEDA75" />
+            <stop offset="20%" stopColor="#F58529" />
+            <stop offset="45%" stopColor="#DD2A7B" />
+            <stop offset="75%" stopColor="#8134AF" />
+            <stop offset="100%" stopColor="#515BD4" />
+          </linearGradient>
+        </defs>
+        <rect x="2.2" y="2.2" width="19.6" height="19.6" rx="5.4" fill="url(#igGrad)" />
+        <circle cx="12" cy="12" r="4.4" fill="none" stroke="#fff" strokeWidth="2.2" />
+        <circle cx="17.2" cy="6.8" r="1.1" fill="#fff" />
+      </svg>
+    </span>
+  )
+}
+
+const SOCMED = [
+  { name: 'instagram' as const, label: 'Instagram', href: '#' },
+  { name: 'tiktok' as const, label: 'TikTok', href: '#' },
+  { name: 'youtube' as const, label: 'YouTube', href: '#' },
+]
+
+export function Footer(){return <footer id="kontak" className="bg-[#163d78] py-12 text-white"><div className="container-wide grid gap-10 md:grid-cols-[1.4fr_1fr_1.2fr]"><div><Logo light/><p className="mt-5 max-w-xs text-sm leading-relaxed text-white/70">Mitra perjalanan terpercaya dari Sukabumi untuk menjelajah Indonesia bersama keluarga, sekolah, dan perusahaan.</p><div className="mt-5 flex items-center gap-3">{SOCMED.map((s) => (<a key={s.name} href={s.href} aria-label={s.label} className="group flex h-9 w-9 items-center justify-center transition-transform duration-300 hover:-translate-y-0.5"><SocialIcon name={s.name} /></a>))}</div></div><div><h3 className="mb-4 font-sans text-sm font-bold uppercase tracking-wider">Tautan Cepat</h3><div className="flex flex-col gap-3 text-sm text-white/70"><Link href="/#paket">Paket Wisata</Link><Link href="/panduan">Panduan Peserta</Link><Link href="/#tentang">Tentang Kami</Link></div></div><div><h3 className="mb-4 font-sans text-sm font-bold uppercase tracking-wider">Hubungi Kami</h3><div className="space-y-2 text-sm text-white/70"><p>Graha Barokah, Jl. Cisaat Sukamanah, Kab. Sukabumi 43152</p><p>0859-3000-5544 / 0857-3122-2878</p><p>adminbarokahtour@gmail.com</p></div></div></div><div className="container-wide mt-10 border-t border-white/15 pt-5 text-xs text-white/50">© {new Date().getFullYear()} PT. Bina Barokah Sejahtera. Semua hak dilindungi.</div></footer>}
 
 export function BookingBar({ price = 'Rp 425.000' }: { price?: string }) {
   const [hidden, setHidden] = useState(false)
