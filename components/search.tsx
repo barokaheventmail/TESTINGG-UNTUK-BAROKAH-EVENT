@@ -11,8 +11,8 @@ const months = [
   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
 ]
 
-function formatTanggal(d: Date): string {
-  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`
+function formatTanggalPendek(d: Date): string {
+  return `${d.getDate()} ${months[d.getMonth()].slice(0, 3)} ${d.getFullYear()}`
 }
 
 function startOfDay(d: Date) {
@@ -68,15 +68,15 @@ function CalendarDropdown({ value, onChange, min }: { value: Date | null; onChan
       <button
         type="button"
         onClick={toggleOpen}
-        className="flex w-full items-center justify-between gap-2 text-sm text-left"
+        className="relative flex w-full items-center justify-center gap-2 pr-6 text-sm text-left"
         aria-label="Pilih tanggal"
       >
         {value ? (
-          <span className="block truncate">{formatTanggal(value)}</span>
+          <span className="min-w-0 truncate">{formatTanggalPendek(value)}</span>
         ) : (
-          <span className="text-[#657080]">Pilih tanggal</span>
+          <span className="truncate text-[#657080]">Pilih tanggal</span>
         )}
-        <ChevronDown size={14} className={`text-[#657080] transition-transform ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown size={14} className={`absolute right-0 shrink-0 text-[#657080] transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (
@@ -194,7 +194,7 @@ export function SearchWidget({ packages }: { packages: PackageOption[] }) {
 
   return (
     <form onSubmit={handleSubmit} aria-label="Cari paket wisata">
-      <div className="flex flex-col gap-1.5 rounded-2xl border border-[#dfe4e8] bg-white p-1.5 shadow-xl min-[480px]:flex-row min-[480px]:items-stretch min-[480px]:rounded-full">
+      <div className="flex flex-col gap-1.5 rounded-2xl border border-[#dfe4e8] bg-white p-1.5 shadow-xl text-[#1d2733] min-[480px]:flex-row min-[480px]:items-stretch min-[480px]:rounded-full">
         <label className="flex min-w-0 flex-1 items-center gap-2 rounded-2xl bg-[#f8fafc] px-4 py-2 min-[480px]:rounded-full has-[:focus]:bg-white">
           <MapPin className="shrink-0 text-[#2ca84a]" size={16} />
           <input
@@ -209,12 +209,12 @@ export function SearchWidget({ packages }: { packages: PackageOption[] }) {
           />
         </label>
 
-        <label className="relative flex min-w-0 flex-1 items-center gap-2 rounded-2xl bg-[#f8fafc] px-4 py-2 min-[480px]:rounded-full has-[:focus]:bg-white">
+        <div className="relative flex min-w-0 flex-1 items-center gap-2 rounded-2xl bg-[#f8fafc] px-4 py-2 min-[480px]:rounded-full has-[:focus]:bg-white">
           <CalendarDays className="shrink-0 text-[#2ca84a]" size={16} />
           <span className="w-full">
             <CalendarDropdown value={tanggal} onChange={setTanggal} min={minDate} />
           </span>
-        </label>
+        </div>
 
         <label className="flex min-w-0 flex-1 items-center gap-2 rounded-2xl bg-[#f8fafc] px-4 py-2 min-[480px]:rounded-full">
           <Users className="shrink-0 text-[#2ca84a]" size={16} />

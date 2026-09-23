@@ -59,7 +59,7 @@ const PASSENGERS: Passenger[] = [
   { name: 'Ilham Kurniawan', tiket: 'BTH-2026-1049', paket: 'Study Tour Bandung', tanggal: '5 November 2026', status: 'Terkonfirmasi', kode: 'BK1049' },
   { name: 'Sarah Azzahra', tiket: 'BTH-2026-1050', paket: 'Study Tour Bandung', tanggal: '5 November 2026', status: 'Terkonfirmasi', kode: 'BK1050' },
   { name: 'Doni Saputra', tiket: 'BTH-2026-1051', paket: 'Open Trip Yogyakarta', tanggal: '20 Oktober 2026', status: 'Terkonfirmasi', kode: 'BK1051' },
-  { name: 'Rina Marlina', tiket: 'BTH-2026-1052', paket: 'Open Trip Ancol–Dufan', tanggal: '12 Oktober 2026', status: 'Terkonfirmasi', kode: 'BK1052' },
+  { name: 'Farisa Hilmi', tiket: 'BTH-2026-1052', paket: 'Open Trip Ancol–Dufan', tanggal: '12 Oktober 2026', status: 'Terkonfirmasi', kode: 'BK1052' },
 ]
 
 export function TicketSearch() {
