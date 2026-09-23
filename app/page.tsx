@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Check, Phone } from 'lucide-react'
+import { Phone } from 'lucide-react'
 import { BannerSlideshow } from '@/components/banner-slideshow'
 import { Footer, Navbar, TrustStrip } from '@/components/site'
 import { SearchTabs } from '@/components/search-tabs'
@@ -126,21 +126,16 @@ export default function Home() {
               Kami membantu perjalanan wisata, pendidikan, dan perusahaan dengan pelayanan yang amanah dan profesional.
             </p>
             <div className="relative overflow-hidden rounded-2xl border border-[#dce8e1] bg-white/90 p-7 shadow-[0_24px_60px_-32px_rgba(27,53,85,0.4)] backdrop-blur">
-              <h3 className="flex items-center gap-3 text-lg font-bold text-[#1b3555]">
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#edf5ef] text-[#2ca84a]">
-                  <Check size={17} />
-                </span>
-                Lisensi & Data Resmi
-              </h3>
+<h3 className="text-lg font-bold text-[#1b3555]">Lisensi &amp; Data Resmi</h3>
               <ul className="mt-5 space-y-3 text-sm leading-relaxed">
-                <li className="flex items-start gap-3 text-[#44576d]"><Check size={15} className="mt-0.5 shrink-0 text-[#2ca84a]" /><span><strong className="font-semibold text-[#1b3555]">Penanggung jawab:</strong> Rizal Bahtiar, S.Psi.</span></li>
-                <li className="flex items-start gap-3 text-[#44576d]"><Check size={15} className="mt-0.5 shrink-0 text-[#2ca84a]" /><span><strong className="font-semibold text-[#1b3555]">Akta Notaris:</strong> AHU-0045694.AH.01.012018</span></li>
-                <li className="flex items-start gap-3 text-[#44576d]"><Check size={15} className="mt-0.5 shrink-0 text-[#2ca84a]" /><span><strong className="font-semibold text-[#1b3555]">SIUP, TDUP, NIB:</strong> 8120004912783</span></li>
-                <li className="flex items-start gap-3 text-[#44576d]"><Check size={15} className="mt-0.5 shrink-0 text-[#2ca84a]" /><span><strong className="font-semibold text-[#1b3555]">ASITA:</strong> 0704/IX/DPP/2018</span></li>
-                <li className="flex items-start gap-3 text-[#44576d]"><Check size={15} className="mt-0.5 shrink-0 text-[#2ca84a]" /><span><strong className="font-semibold text-[#1b3555]">Alamat:</strong> Graha Barokah Jl. Cisaat Sukamanah, Kec. Cisaat, Kab. Sukabumi (43152)</span></li>
-                <li className="flex items-start gap-3 text-[#44576d]"><Check size={15} className="mt-0.5 shrink-0 text-[#2ca84a]" /><span><strong className="font-semibold text-[#1b3555]">No. Telepon:</strong> (0266) 230-408 / 0859 3000 5544</span></li>
-                <li className="flex items-start gap-3 text-[#44576d]"><Check size={15} className="mt-0.5 shrink-0 text-[#2ca84a]" /><span><strong className="font-semibold text-[#1b3555]">E-mail:</strong> adminbarokahtour@gmail.com</span></li>
-                <li className="flex items-start gap-3 text-[#44576d]"><Check size={15} className="mt-0.5 shrink-0 text-[#2ca84a]" /><span><strong className="font-semibold text-[#1b3555]">Website:</strong> www.barokahtour.com</span></li>
+                <li className="text-[#44576d]"><span><strong className="font-semibold text-[#1b3555]">Penanggung jawab:</strong> Rizal Bahtiar, S.Psi.</span></li>
+                <li className="text-[#44576d]"><span><strong className="font-semibold text-[#1b3555]">Akta Notaris:</strong> AHU-0045694.AH.01.012018</span></li>
+                <li className="text-[#44576d]"><span><strong className="font-semibold text-[#1b3555]">SIUP, TDUP, NIB:</strong> 8120004912783</span></li>
+                <li className="text-[#44576d]"><span><strong className="font-semibold text-[#1b3555]">ASITA:</strong> 0704/IX/DPP/2018</span></li>
+                <li className="text-[#44576d]"><span><strong className="font-semibold text-[#1b3555]">Alamat:</strong> Graha Barokah Jl. Cisaat Sukamanah, Kec. Cisaat, Kab. Sukabumi (43152)</span></li>
+                <li className="text-[#44576d]"><span><strong className="font-semibold text-[#1b3555]">No. Telepon:</strong> (0266) 230-408 / 0859 3000 5544</span></li>
+                <li className="text-[#44576d]"><span><strong className="font-semibold text-[#1b3555]">E-mail:</strong> adminbarokahtour@gmail.com</span></li>
+                <li className="text-[#44576d]"><span><strong className="font-semibold text-[#1b3555]">Website:</strong> www.barokahtour.com</span></li>
               </ul>
             </div>
           </div>
@@ -158,9 +153,8 @@ export default function Home() {
               {layanan.map((item) => (
                 <li
                   key={item}
-                  className="group flex items-start gap-3 rounded-xl border border-[#dce8e1] bg-white/80 px-4 py-3.5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-[#f5b915]/70 hover:shadow-[0_16px_40px_-18px_rgba(27,53,85,0.35)]"
+                  className="group rounded-xl border border-[#dce8e1] bg-white/80 px-4 py-3.5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-[#f5b915]/70 hover:shadow-[0_16px_40px_-18px_rgba(27,53,85,0.35)]"
                 >
-                  <Check size={17} className="mt-0.5 shrink-0" />
                   <p className="text-sm font-semibold leading-relaxed text-[#1b3555]">{item}</p>
                 </li>
               ))}
