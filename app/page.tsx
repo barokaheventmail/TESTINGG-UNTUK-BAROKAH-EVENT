@@ -94,18 +94,24 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="tentang" className="relative overflow-hidden bg-[#edf5ef] py-24">
+      <div className="relative overflow-hidden bg-[#edf5ef]">
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0"
-          style={{ backgroundImage: 'radial-gradient(ellipse 90% 80% at 100% 0%, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.25) 45%, rgba(255,255,255,0) 78%)' }}
+          className="pointer-events-none absolute inset-x-0 top-0 h-96"
+          style={{ backgroundImage: 'radial-gradient(ellipse 130% 100% at 50% 0%, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0) 60%)' }}
         />
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0"
-          style={{ backgroundImage: 'radial-gradient(ellipse 80% 70% at 0% 100%, rgba(44,168,74,0.14) 0%, rgba(44,168,74,0) 72%)' }}
+          style={{ backgroundImage: 'radial-gradient(ellipse 55% 50% at 100% 0%, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 70%)' }}
         />
-        <div className="container-wide relative grid gap-14 lg:grid-cols-2 lg:items-start">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{ backgroundImage: 'radial-gradient(ellipse 90% 85% at 0% 100%, rgba(44,168,74,0.16) 0%, rgba(44,168,74,0) 72%)' }}
+        />
+        <section id="tentang" className="relative py-24">
+          <div className="container-wide relative grid gap-14 lg:grid-cols-2 lg:items-start">
           <div className="space-y-6">
             <div>
               <p className="eyebrow mb-2">Tentang Kami</p>
@@ -161,22 +167,37 @@ export default function Home() {
             </ul>
           </div>
         </div>
-      </section>
+        </section>
 
-      <section className="bg-[#f5b915] py-12">
-        <div className="container-wide flex flex-col items-start justify-between gap-5 md:flex-row md:items-center">
-          <div>
-            <h2 className="text-3xl font-bold text-[#1b3555]">Butuh Bantuan Merencanakan Perjalanan?</h2>
-            <p className="mt-1 text-[#1b3555]/75">Tim Barokah siap membantu menjawab kebutuhan Anda.</p>
+        <section className="container-wide relative py-12">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1a4a8a] via-[#163d78] to-[#0e2b55] px-6 py-12 shadow-2xl shadow-[#163d78]/25 md:px-12 md:py-16">
+          <div className="guide-pattern absolute inset-0 opacity-30" aria-hidden />
+
+          <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[#f5b915]/20 blur-3xl" aria-hidden />
+          <div className="absolute -bottom-32 -left-16 h-80 w-80 rounded-full bg-[#2ca84a]/10 blur-3xl" aria-hidden />
+
+          <div className="absolute -bottom-20 -right-16 hidden h-64 w-64 rounded-full border-[22px] border-white/5 md:block" aria-hidden />
+          <div className="absolute bottom-10 right-8 hidden h-24 w-24 rounded-full border border-dashed border-white/15 lg:block" aria-hidden />
+
+          <div className="relative flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
+            <div>
+              <p className="eyebrow !text-[#f5b915]">Butuh bantuan?</p>
+              <h2 className="mt-2 whitespace-nowrap text-3xl font-bold leading-tight text-white md:text-4xl">
+                Rencanakan Perjalanan <span className="font-serif italic text-[#f5b915]">Bersama Kami</span>
+              </h2>
+              <p className="mt-2 text-white/75">Tim Barokah siap membantu menjawab kebutuhan perjalanan Anda.</p>
+            </div>
+            <a
+              href="https://wa.me/6285930005544"
+              className="group flex shrink-0 items-center gap-2.5 rounded-full bg-[#f5b915] px-7 py-3.5 text-sm font-bold text-[#1d2733] shadow-lg shadow-[#f5b915]/30 transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#e4aa09] hover:shadow-xl hover:shadow-[#f5b915]/40 active:scale-95"
+            >
+              <Phone size={16} className="transition-transform duration-200 group-hover:-rotate-12" />
+              Chat via WhatsApp
+            </a>
           </div>
-          <a
-            href="https://wa.me/6285930005544"
-            className="flex items-center gap-2 bg-[#1b4f9c] px-5 py-3 text-sm font-bold text-white"
-          >
-            <Phone size={16} /> Chat via WhatsApp
-          </a>
         </div>
-      </section>
+        </section>
+      </div>
 
       <Footer />
     </main>
