@@ -9,14 +9,9 @@ export type SearchMatch = {
   token: string
   name: string
   order: number
-  seat: string | null
-  room: string | null
-  vw: string | null
-  attended: boolean
   busName: string
   eventTitle: string
   eventDate: string
-  eventStatus: 'DRAFT' | 'ACTIVE' | 'CLOSED'
 }
 
 export function TicketSearch({ eventId, disabled }: { eventId?: string; disabled?: boolean } = {}) {
@@ -148,11 +143,6 @@ export function TicketSearch({ eventId, disabled }: { eventId?: string; disabled
                       {eventId ? m.busName : `${m.eventTitle} · ${m.busName}`}
                     </span>
                   </span>
-                  {m.attended && (
-                    <span className="shrink-0 rounded-full bg-[#e6f4ea] px-2 py-0.5 text-[10px] font-bold text-[#2ca84a]">
-                      Hadir
-                    </span>
-                  )}
                 </button>
               </li>
             ))}
@@ -161,11 +151,7 @@ export function TicketSearch({ eventId, disabled }: { eventId?: string; disabled
 
       {selected && (
         <div className="animate-fade-up mt-4 overflow-hidden rounded-2xl border border-[#dfe4e8] bg-white shadow-lg">
-          <div
-            className={`flex flex-wrap items-center gap-3 border-l-4 px-5 py-4 ${
-              selected.attended ? 'border-[#2ca84a] bg-[#e6f4ea]' : 'border-[#2ca84a] bg-[#e6f4ea]'
-            }`}
-          >
+          <div className="flex flex-wrap items-center gap-3 border-l-4 border-[#2ca84a] bg-[#e6f4ea] px-5 py-4">
             <BadgeCheck className="shrink-0 text-[#2ca84a]" size={20} />
             <div className="min-w-0 flex-1">
               <p className="text-sm font-bold text-[#1b3555]">{selected.name} · Tiket Ditemukan</p>
@@ -187,22 +173,12 @@ export function TicketSearch({ eventId, disabled }: { eventId?: string; disabled
               <dd className="mt-0.5 font-bold text-[#1b4f9c]">{selected.busName}</dd>
             </div>
             <div className="rounded-xl bg-[#f8fafc] p-3">
-              <dt className="text-[11px] font-semibold uppercase tracking-wide text-[#9aa3af]">Kursi</dt>
-              <dd className="mt-0.5 font-semibold text-[#1b3555]">{selected.seat ?? selected.order}</dd>
+              <dt className="text-[11px] font-semibold uppercase tracking-wide text-[#9aa3af]">Nomor Peserta</dt>
+              <dd className="mt-0.5 font-semibold text-[#1b3555]">{selected.order}</dd>
             </div>
-            <div className="rounded-xl bg-[#f8fafc] p-3">
+            <div className="rounded-xl bg-[#f8fafc] p-3 sm:col-span-2">
               <dt className="text-[11px] font-semibold uppercase tracking-wide text-[#9aa3af]">Tanggal</dt>
               <dd className="mt-0.5 font-semibold text-[#1b3555]">{formatTanggalPendek(new Date(selected.eventDate))}</dd>
-            </div>
-            <div className="rounded-xl bg-[#f8fafc] p-3">
-              <dt className="text-[11px] font-semibold uppercase tracking-wide text-[#9aa3af]">Status</dt>
-              <dd
-                className={`mt-0.5 inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold ${
-                  selected.attended ? 'bg-[#e6f4ea] text-[#2ca84a]' : 'bg-[#fff7e0] text-[#b98a12]'
-                }`}
-              >
-                {selected.attended ? 'Sudah Hadir' : 'Belum Hadir'}
-              </dd>
             </div>
           </dl>
           <div className="border-t border-[#edf0f3] px-5 py-3 text-center">

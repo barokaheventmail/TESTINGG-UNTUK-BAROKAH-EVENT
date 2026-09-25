@@ -26,9 +26,12 @@ export async function POST(request: NextRequest, { params }: Params) {
 
   const order = await prisma.bus.count({ where: { eventId: id } })
   try {
-    const bus = await prisma.bus.create({ data: { eventId: id, name, order: order + 1 } })
-    await prisma.activityLog.create({
-      data: { eventId: id, userId: session.sub, action: 'bus.create', detail: { name } },
+    const bus = await prisma.$transaction(async (tx) => {
+      const created = await tx.bus.create({ data: { eventId: id, name, order: order + 1 } })
+      await tx.activityLog.create({
+        data: { eventId: id, userId: session.sub, action: 'bus.create', detail: { name } },
+      })
+      return created
     })
     logger.info('bus created', { eventId: id, bus: name })
     return NextResponse.json({ bus }, { status: 201 })

@@ -21,14 +21,19 @@ export async function POST(_request: NextRequest, { params }: Params) {
       data: { scannedAt: null, scannedById: null, scannedAtEvent: null },
     })
     const logs = await tx.scanLog.deleteMany({ where: { participant: { eventId: id } } })
+    if (updated.count > 0) {
+      await tx.activityLog.create({
+        data: {
+          eventId: id,
+          userId: session.sub,
+          action: 'attendance.reset',
+          detail: { participants: updated.count, logs: logs.count },
+        },
+      })
+    }
     return { participants: updated.count, logs: logs.count }
   })
 
-  if (result.participants > 0) {
-    await prisma.activityLog.create({
-      data: { eventId: id, userId: session.sub, action: 'attendance.reset', detail: result },
-    })
-  }
   logger.info('attendance reset', { eventId: id, by: session.username, ...result })
 
   return NextResponse.json(result)

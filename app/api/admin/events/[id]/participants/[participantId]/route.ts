@@ -76,18 +76,29 @@ export async function PATCH(request: NextRequest, { params }: Params) {
           await tx.participant.update({ where: { id: occupant.id }, data: { order: -1 } })
           await tx.participant.update({ where: { id: participantId }, data: { ...patch, busId, order: nextOrder } })
           await tx.participant.update({ where: { id: occupant.id }, data: { order: temp, busId: occupant.busId } })
-          return tx.participant.findUniqueOrThrow({ where: { id: participantId } })
+          const updated = await tx.participant.findUniqueOrThrow({ where: { id: participantId } })
+          await tx.activityLog.create({
+            data: { eventId: id, userId: session.sub, action: 'participant.update', detail: { name: updated.name, busId, order: updated.order } },
+          })
+          return updated
         }
         await tx.participant.update({ where: { id: participantId }, data: { order: -1 } })
-        return tx.participant.update({ where: { id: participantId }, data: { ...patch, busId, order: nextOrder } })
+        const updated = await tx.participant.update({ where: { id: participantId }, data: { ...patch, busId, order: nextOrder } })
+        await tx.activityLog.create({
+          data: { eventId: id, userId: session.sub, action: 'participant.update', detail: { name: updated.name, busId, order: updated.order } },
+        })
+        return updated
       })
     } else {
-      participant = await prisma.participant.update({ where: { id: participantId }, data: patch })
+      participant = await prisma.$transaction(async (tx) => {
+        const updated = await tx.participant.update({ where: { id: participantId }, data: patch })
+        await tx.activityLog.create({
+          data: { eventId: id, userId: session.sub, action: 'participant.update', detail: { name: updated.name, busId, order: updated.order } },
+        })
+        return updated
+      })
     }
 
-    await prisma.activityLog.create({
-      data: { eventId: id, userId: session.sub, action: 'participant.update', detail: { name: participant.name, busId, order: participant.order } },
-    })
     logger.info('participant updated', { eventId: id, by: session.username, participantId, name: participant.name })
 
     return NextResponse.json({ participant })
@@ -112,10 +123,9 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
       where: { eventId: id, busId: existing.busId, order: { gt: existing.order } },
       data: { order: { decrement: 1 } },
     })
-  })
-
-  await prisma.activityLog.create({
-    data: { eventId: id, userId: session.sub, action: 'participant.delete', detail: { name: existing.name } },
+    await tx.activityLog.create({
+      data: { eventId: id, userId: session.sub, action: 'participant.delete', detail: { name: existing.name } },
+    })
   })
   logger.info('participant deleted', { eventId: id, by: session.username, participantId, name: existing.name })
 

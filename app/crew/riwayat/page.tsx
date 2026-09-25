@@ -1,7 +1,8 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
-import { ArrowLeft, History, ScanBarcode } from 'lucide-react'
+import { ArrowLeft, History, ScanBarcode, Search } from 'lucide-react'
+import type { Prisma } from '@prisma/client'
 import { requireUser } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { formatWaktuLengkap } from '@/lib/dates'
@@ -11,7 +12,7 @@ export const metadata: Metadata = { title: 'Riwayat Scan – Barokah Tour', robo
 export const dynamic = 'force-dynamic'
 
 const PER_PAGE = 50
-type SearchParams = Promise<{ page?: string }>
+type SearchParams = Promise<{ page?: string; q?: string }>
 
 export default async function CrewRiwayatPage({ searchParams }: { searchParams: SearchParams }) {
   const session = await requireUser()
@@ -19,14 +20,19 @@ export default async function CrewRiwayatPage({ searchParams }: { searchParams: 
 
   const sp = await searchParams
   const page = Math.max(1, Number(sp.page) || 1)
+  const q = typeof sp.q === 'string' ? sp.q.trim().slice(0, 100) : ''
   const userId = session.sub
 
   const startOfToday = new Date()
   startOfToday.setHours(0, 0, 0, 0)
 
+  const logWhere: Prisma.ScanLogWhereInput = q
+    ? { userId, participant: { name: { contains: q, mode: 'insensitive' } } }
+    : { userId }
+
   const [logs, total, todayCount] = await Promise.all([
     prisma.scanLog.findMany({
-      where: { userId },
+      where: logWhere,
       orderBy: { createdAt: 'desc' },
       skip: (page - 1) * PER_PAGE,
       take: PER_PAGE,
@@ -43,11 +49,21 @@ export default async function CrewRiwayatPage({ searchParams }: { searchParams: 
         },
       },
     }),
-    prisma.scanLog.count({ where: { userId } }),
+    prisma.scanLog.count({ where: logWhere }),
     prisma.scanLog.count({ where: { userId, createdAt: { gte: startOfToday } } }),
   ])
 
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE))
+
+  const qs = (patch: Record<string, string>): string => {
+    const p = new URLSearchParams()
+    if (q) p.set('q', q)
+    p.set('page', String(page))
+    for (const [k, v] of Object.entries(patch)) {
+      if (v) p.set(k, v)
+    }
+    return `?${p.toString()}`
+  }
 
   return (
     <main className="min-h-screen bg-[#0f2a52] pb-16">
@@ -76,7 +92,33 @@ export default async function CrewRiwayatPage({ searchParams }: { searchParams: 
       </header>
 
       <div className="mx-auto mt-5 w-full max-w-md px-4">
-        <div className="grid grid-cols-2 gap-3">
+        <form className="flex items-center gap-2" method="get">
+          <label className="flex flex-1 items-center gap-2 rounded-xl border border-white/10 bg-white px-3 py-2.5">
+            <Search size={15} className="shrink-0 text-[#9aa3af]" />
+            <input
+              name="q"
+              defaultValue={q}
+              placeholder="Cari nama peserta…"
+              className="w-full bg-transparent text-sm font-semibold text-[#1b3555] outline-none placeholder:text-[#9aa3af]"
+            />
+          </label>
+          <button
+            type="submit"
+            className="rounded-xl bg-[#f5b915] px-4 py-2.5 text-sm font-bold text-[#1d2733] transition-colors duration-200 hover:bg-[#e4aa09]"
+          >
+            Cari
+          </button>
+          {q && (
+            <Link
+              href="/crew/riwayat"
+              className="rounded-xl border border-white/20 px-3 py-2.5 text-sm font-bold text-white hover:bg-white/10"
+            >
+              Reset
+            </Link>
+          )}
+        </form>
+
+        <div className="mt-4 grid grid-cols-2 gap-3">
           <div className="rounded-2xl bg-white/10 p-4">
             <p className="text-2xl font-black text-white">{total.toLocaleString('id-ID')}</p>
             <p className="text-[11px] font-semibold uppercase tracking-wide text-white/50">Total scan</p>
@@ -90,8 +132,12 @@ export default async function CrewRiwayatPage({ searchParams }: { searchParams: 
         {logs.length === 0 ? (
           <div className="mt-5 rounded-2xl border border-dashed border-white/20 bg-white/5 p-8 text-center">
             <ScanBarcode className="mx-auto text-white/30" size={32} />
-            <p className="mt-3 text-sm font-bold text-white">Belum ada scan</p>
-            <p className="mt-1 text-xs text-white/50">Scan pertama yang kamu lakukan akan tercatat di sini.</p>
+            <p className="mt-3 text-sm font-bold text-white">{q ? 'Tidak ada scan yang cocok' : 'Belum ada scan'}</p>
+            <p className="mt-1 text-xs text-white/50">
+              {q
+                ? `Tidak ditemukan peserta bernama "${q}".`
+                : 'Scan pertama yang kamu lakukan akan tercatat di sini.'}
+            </p>
           </div>
         ) : (
           <ul className="mt-5 space-y-3">
@@ -136,7 +182,7 @@ export default async function CrewRiwayatPage({ searchParams }: { searchParams: 
             <div className="flex gap-2">
               {page > 1 && (
                 <Link
-                  href={`/crew/riwayat?page=${page - 1}`}
+                  href={`/crew/riwayat${qs({ page: String(page - 1) })}`}
                   className="rounded-xl bg-white/10 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-white/20"
                 >
                   ‹ Sebelumnya
@@ -144,7 +190,7 @@ export default async function CrewRiwayatPage({ searchParams }: { searchParams: 
               )}
               {page < totalPages && (
                 <Link
-                  href={`/crew/riwayat?page=${page + 1}`}
+                  href={`/crew/riwayat${qs({ page: String(page + 1) })}`}
                   className="rounded-xl bg-white/10 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-white/20"
                 >
                   Berikutnya ›

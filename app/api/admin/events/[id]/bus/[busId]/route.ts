@@ -28,9 +28,12 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   if (existing.name === name) return NextResponse.json({ bus: existing })
 
   try {
-    const bus = await prisma.bus.update({ where: { id: busId }, data: { name } })
-    await prisma.activityLog.create({
-      data: { eventId: id, userId: session.sub, action: 'bus.update', detail: { from: existing.name, to: name } },
+    const bus = await prisma.$transaction(async (tx) => {
+      const updated = await tx.bus.update({ where: { id: busId }, data: { name } })
+      await tx.activityLog.create({
+        data: { eventId: id, userId: session.sub, action: 'bus.update', detail: { from: existing.name, to: name } },
+      })
+      return updated
     })
     logger.info('bus updated', { eventId: id, by: session.username, busId, from: existing.name, to: name })
     return NextResponse.json({ bus })

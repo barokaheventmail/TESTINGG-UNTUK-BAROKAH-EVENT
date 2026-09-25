@@ -1,10 +1,9 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
-import { Bus, CalendarDays, ChevronRight, ClipboardList, MapPin, QrCode, Users } from 'lucide-react'
+import { Bus, CalendarDays, ClipboardList, MapPin, QrCode, Search, Users } from 'lucide-react'
 import { prisma } from '@/lib/db'
 import { formatTanggalPendek } from '@/lib/dates'
 import { CreateEvent } from '@/components/admin/create-event'
-import { LogEntry } from '@/components/admin/log-entry'
 
 export const metadata: Metadata = { title: 'Panel Admin – Barokah Tour', robots: { index: false } }
 
@@ -16,9 +15,13 @@ const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
   CLOSED: { label: 'Selesai', cls: 'bg-[#eef3fb] text-[#1b4f9c]' },
 }
 
-export default async function AdminDashboard() {
-  const [events, attendedRows, recentLogs] = await Promise.all([
+export default async function AdminDashboard({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+  const sp = await searchParams
+  const q = typeof sp.q === 'string' ? sp.q.trim().slice(0, 100) : ''
+
+  const [events, attendedRows] = await Promise.all([
     prisma.event.findMany({
+      where: q ? { title: { contains: q, mode: 'insensitive' } } : {},
       orderBy: { date: 'desc' },
       include: { _count: { select: { buses: true, participants: true } } },
     }),
@@ -26,11 +29,6 @@ export default async function AdminDashboard() {
       by: ['eventId'],
       where: { scannedAt: { not: null } },
       _count: { _all: true },
-    }),
-    prisma.activityLog.findMany({
-      orderBy: { createdAt: 'desc' },
-      take: 8,
-      include: { user: { select: { username: true } }, event: { select: { title: true } } },
     }),
   ])
   const attendedMap = new Map(attendedRows.map((r) => [r.eventId, r._count._all]))
@@ -47,11 +45,41 @@ export default async function AdminDashboard() {
         <CreateEvent />
       </div>
 
+      <form className="mt-5 flex items-center gap-2" method="get">
+        <label className="flex flex-1 items-center gap-2 rounded-xl border border-[#dfe4e8] bg-white px-3 py-2.5">
+          <Search size={15} className="shrink-0 text-[#9aa3af]" />
+          <input
+            name="q"
+            defaultValue={q}
+            placeholder="Cari event…"
+            className="w-full bg-transparent text-sm font-semibold text-[#1b3555] outline-none placeholder:text-[#9aa3af]"
+          />
+        </label>
+        <button
+          type="submit"
+          className="rounded-xl bg-[#1b4f9c] px-4 py-2.5 text-sm font-bold text-white transition-colors duration-200 hover:bg-[#16407d]"
+        >
+          Cari
+        </button>
+        {q && (
+          <Link
+            href="/admin"
+            className="rounded-xl border border-[#dfe4e8] bg-white px-4 py-2.5 text-sm font-bold text-[#657080] hover:bg-[#f1f3f5]"
+          >
+            Reset
+          </Link>
+        )}
+      </form>
+
       {events.length === 0 ? (
-        <div className="mt-8 rounded-2xl border border-dashed border-[#bfd3c4] bg-white p-10 text-center">
+        <div className="mt-6 rounded-2xl border border-dashed border-[#bfd3c4] bg-white p-10 text-center">
           <ClipboardList className="mx-auto text-[#9aa3af]" size={36} />
-          <p className="mt-3 text-sm font-bold text-[#1b3555]">Belum ada event</p>
-          <p className="mt-1 text-xs text-[#657080]">Buat event pertama, lalu upload data peserta dari Excel.</p>
+          <p className="mt-3 text-sm font-bold text-[#1b3555]">{q ? 'Tidak ada event yang cocok' : 'Belum ada event'}</p>
+          <p className="mt-1 text-xs text-[#657080]">
+            {q
+              ? `Tidak ditemukan event dengan judul mengandung "${q}".`
+              : 'Buat event pertama, lalu upload data peserta dari Excel.'}
+          </p>
         </div>
       ) : (
         <div className="mt-6 space-y-4">
@@ -104,33 +132,6 @@ export default async function AdminDashboard() {
               </Link>
             )
           })}
-        </div>
-      )}
-
-      {recentLogs.length > 0 && (
-        <div className="mt-8 rounded-2xl border border-[#dfe4e8] bg-white p-5">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold text-[#1b3555]">Aktivitas Terbaru</h2>
-            <Link href="/admin/logs" className="flex items-center gap-0.5 text-xs font-bold text-[#1b4f9c] hover:text-[#16407d]">
-              Lihat semua <ChevronRight size={13} />
-            </Link>
-          </div>
-          <ul className="mt-3 divide-y divide-[#eef1f4]">
-            {recentLogs.map((log) => (
-              <LogEntry
-                key={log.id}
-                className="px-0 py-2.5"
-                log={{
-                  id: log.id,
-                  action: log.action,
-                  detail: log.detail,
-                  createdAt: log.createdAt,
-                  user: log.user,
-                  event: log.event,
-                }}
-              />
-            ))}
-          </ul>
         </div>
       )}
     </div>

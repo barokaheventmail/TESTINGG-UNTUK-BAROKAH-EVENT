@@ -1,6 +1,6 @@
 export type LogDetail = Record<string, unknown> | null
 
-export type LogGroup = 'Import' | 'Kelola Event' | 'Armada' | 'Peserta' | 'Kehadiran' | 'Scan' | 'Lainnya'
+export type LogGroup = 'Import' | 'Kelola Event' | 'Armada' | 'Peserta' | 'Kehadiran' | 'Scan' | 'Keamanan' | 'Lainnya'
 
 const GROUP_STYLE: Record<LogGroup, string> = {
   Import: 'bg-[#e6f4ea] text-[#2ca84a]',
@@ -9,6 +9,7 @@ const GROUP_STYLE: Record<LogGroup, string> = {
   Peserta: 'bg-[#e8f4fb] text-[#0d7bb5]',
   Kehadiran: 'bg-[#fff7e0] text-[#b98a12]',
   Scan: 'bg-[#eff1f4] text-[#657080]',
+  Keamanan: 'bg-[#fdeaea] text-[#c0392b]',
   Lainnya: 'bg-[#eff1f4] text-[#657080]',
 }
 
@@ -27,6 +28,9 @@ const ACTION_GROUP: Record<string, LogGroup> = {
   'attendance.reset': 'Kehadiran',
   'scan.attended': 'Scan',
   'scan.duplicate': 'Scan',
+  'auth.login.success': 'Keamanan',
+  'auth.login.failed': 'Keamanan',
+  'auth.logout': 'Keamanan',
 }
 
 export const LOG_ACTIONS: { group: LogGroup; actions: { value: string; label: string }[] }[] = [
@@ -68,6 +72,14 @@ export const LOG_ACTIONS: { group: LogGroup; actions: { value: string; label: st
     actions: [
       { value: 'scan.attended', label: 'Scan — hadir' },
       { value: 'scan.duplicate', label: 'Scan — sudah hadir' },
+    ],
+  },
+  {
+    group: 'Keamanan',
+    actions: [
+      { value: 'auth.login.success', label: 'Login berhasil' },
+      { value: 'auth.login.failed', label: 'Percobaan login gagal' },
+      { value: 'auth.logout', label: 'Logout' },
     ],
   },
 ]
@@ -144,7 +156,9 @@ export function formatLogDetail(action: string, detail: LogDetail): string {
       return `Peserta "${n ?? '???'}" dihapus`
     }
     case 'attendance.reset': {
-      const c = detail && typeof detail.count === 'number' ? detail.count : null
+      const c =
+        (detail && typeof detail.participants === 'number' ? detail.participants : null) ??
+        (detail && typeof detail.count === 'number' ? detail.count : null)
       return `Kehadiran direset${c !== null ? ` (${c.toLocaleString('id-ID')} peserta)` : ''}`
     }
     case 'scan.attended': {
@@ -154,6 +168,19 @@ export function formatLogDetail(action: string, detail: LogDetail): string {
     case 'scan.duplicate': {
       const n = getValue(detail, 'name')
       return `Scan: ${n ?? '???'} — sudah hadir`
+    }
+    case 'auth.login.success': {
+      const n = getValue(detail, 'username')
+      const role = getValue(detail, 'role')
+      return `Login berhasil${n ? ` • ${n}` : ''}${role ? ` (${String(role).toLowerCase()})` : ''}`
+    }
+    case 'auth.login.failed': {
+      const n = getValue(detail, 'username')
+      return `Percobaan login gagal${n ? ` • ${n}` : ''}`
+    }
+    case 'auth.logout': {
+      const n = getValue(detail, 'username')
+      return `Logout${n ? ` • ${n}` : ''}`
     }
     default: {
       if (!detail || Object.keys(detail).length === 0) return '—'

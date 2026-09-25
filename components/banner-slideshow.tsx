@@ -20,7 +20,7 @@ export function BannerSlideshow() {
   }, [])
 
   return (
-    <div aria-hidden className="absolute inset-0">
+    <div aria-hidden className="pointer-events-none absolute inset-0">
       {BANNERS.map((url, i) => (
         <div
           key={url}

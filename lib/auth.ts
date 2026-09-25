@@ -12,8 +12,14 @@ export type Session = {
   role: Role
 }
 
+const DEV_SECRET = 'dev-secret-change-me'
+
 function secret(): Uint8Array {
-  return new TextEncoder().encode(process.env.JWT_SECRET ?? 'dev-secret-change-me')
+  const value = process.env.JWT_SECRET || DEV_SECRET
+  if (value === DEV_SECRET && process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET wajib di-set di lingkungan produksi.')
+  }
+  return new TextEncoder().encode(value)
 }
 
 export const cookieOpts = () => {
@@ -58,16 +64,12 @@ export async function getSessionToken(): Promise<string | null> {
 export async function requireUser(): Promise<Session | null> {
   const token = await getSessionToken()
   if (!token) return null
-  return verifySession(token)
-}
-
-export function userRoleGate(session: Session | null, roles: Role[]): Session | null {
-  if (!session || !roles.includes(session.role)) return null
-  return session
-}
-
-export async function logActivity(action: string, eventId?: string | null, userId?: string | null, detail?: unknown) {
-  return prisma.activityLog.create({
-    data: { action, eventId: eventId ?? null, userId: userId ?? null, detail: detail ?? undefined },
+  const verified = await verifySession(token)
+  if (!verified) return null
+  const user = await prisma.user.findUnique({
+    where: { id: verified.sub },
+    select: { id: true, username: true, role: true },
   })
+  if (!user) return null
+  return { sub: user.id, username: user.username, role: user.role }
 }

@@ -62,56 +62,59 @@ export async function POST(request: NextRequest, { params }: Params) {
   let totalUpdated = 0
 
   try {
-    for (let i = 0; i < parsed.buses.length; i++) {
-      const bus = parsed.buses[i]
-      const busRec = await prisma.bus.upsert({
-        where: { eventId_name: { eventId: id, name: bus.name } },
-        create: { eventId: id, name: bus.name, order: i + 1 },
-        update: { order: i + 1 },
-      })
-
-      let created = 0
-      let updated = 0
-      for (const p of bus.participants) {
-        const data = {
-          name: p.name,
-          birthPlace: p.birthPlace ?? null,
-          birthDate: p.birthDate ?? null,
-          phone: p.phone ?? null,
-          seat: p.seat ?? null,
-          room: p.room ?? null,
-          vw: p.vw ?? null,
-        }
-        const exists = await prisma.participant.findUnique({
-          where: { eventId_busId_order: { eventId: id, busId: busRec.id, order: p.order } },
-          select: { id: true },
+    await prisma.$transaction(async (tx) => {
+      for (let i = 0; i < parsed.buses.length; i++) {
+        const bus = parsed.buses[i]
+        const busRec = await tx.bus.upsert({
+          where: { eventId_name: { eventId: id, name: bus.name } },
+          create: { eventId: id, name: bus.name, order: i + 1 },
+          update: { order: i + 1 },
         })
-        if (exists) {
-          await prisma.participant.update({ where: { id: exists.id }, data })
-          updated++
-        } else {
-          await prisma.participant.create({ data: { ...data, eventId: id, busId: busRec.id, order: p.order } })
-          created++
+
+        let created = 0
+        let updated = 0
+        for (const p of bus.participants) {
+          const data = {
+            name: p.name,
+            birthPlace: p.birthPlace ?? null,
+            birthDate: p.birthDate ?? null,
+            phone: p.phone ?? null,
+            seat: p.seat ?? null,
+            room: p.room ?? null,
+            vw: p.vw ?? null,
+          }
+          const exists = await tx.participant.findUnique({
+            where: { eventId_busId_order: { eventId: id, busId: busRec.id, order: p.order } },
+            select: { id: true },
+          })
+          if (exists) {
+            await tx.participant.update({ where: { id: exists.id }, data })
+            updated++
+          } else {
+            await tx.participant.create({ data: { ...data, eventId: id, busId: busRec.id, order: p.order } })
+            created++
+          }
         }
+
+        totalCreated += created
+        totalUpdated += updated
+        busResults.push({ name: bus.name, created, updated, skipped: 0 })
       }
 
-      totalCreated += created
-      totalUpdated += updated
-      busResults.push({ name: bus.name, created, updated, skipped: 0 })
-    }
+      await tx.activityLog.create({
+        data: {
+          eventId: id,
+          userId: session.sub,
+          action: 'event.import',
+          detail: { buses: busResults, created: totalCreated, updated: totalUpdated, skipped: parsed.skipped as number },
+        },
+      })
+    })
   } catch (e) {
     logger.error('excel import failed', { eventId: id, error: e instanceof Error ? e.message : 'unknown' })
     return NextResponse.json({ error: 'Gagal menyimpan data import.' }, { status: 500 })
   }
 
-  await prisma.activityLog.create({
-    data: {
-      eventId: id,
-      userId: session.sub,
-      action: 'event.import',
-      detail: { buses: busResults, created: totalCreated, updated: totalUpdated, skipped: parsed.skipped as number },
-    },
-  })
   logger.info('excel imported', { eventId: id, by: session.username, created: totalCreated, updated: totalUpdated })
 
   return NextResponse.json({

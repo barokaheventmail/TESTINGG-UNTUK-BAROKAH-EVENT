@@ -29,7 +29,7 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
     event.buses.map((bus) =>
       prisma.participant.findMany({
         where: { eventId: id, busId: bus.id },
-        select: { id: true, order: true, name: true, room: true, vw: true, scannedAt: true },
+        select: { id: true, order: true, name: true },
         orderBy: { order: 'asc' },
         take: LIST_LIMIT + 1,
       }),
@@ -118,18 +118,9 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
                     </div>
                     <div className="divide-y divide-[#edf0f3]">
                       {participants.slice(0, LIST_LIMIT).map((p) => (
-                        <div key={p.id} className="flex flex-wrap items-center gap-x-4 gap-y-0.5 px-4 py-2.5 text-sm">
+                        <div key={p.id} className="flex items-center gap-x-4 px-4 py-2.5 text-sm">
                           <span className="w-8 shrink-0 font-bold text-[#9aa3af]">{p.order}</span>
                           <span className="min-w-0 font-semibold text-[#1b3555]">{p.name}</span>
-                          {p.room && <span className="text-xs text-[#657080]">Kamar {p.room}</span>}
-                          {p.vw && <span className="text-xs text-[#657080]">VW {p.vw}</span>}
-                          <span
-                            className={`ml-auto shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
-                              p.scannedAt !== null ? 'bg-[#e6f4ea] text-[#2ca84a]' : 'bg-[#fff7e0] text-[#b98a12]'
-                            }`}
-                          >
-                            {p.scannedAt !== null ? 'Hadir' : 'Belum hadir'}
-                          </span>
                         </div>
                       ))}
                       {busTotal > LIST_LIMIT && (

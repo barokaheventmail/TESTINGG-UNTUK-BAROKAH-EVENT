@@ -176,7 +176,7 @@ export function CrewScanner({ username }: { username: string }) {
             <input
               value={manualToken}
               onChange={(e) => setManualToken(e.target.value)}
-              placeholder="Tempel token QR (BTHT:…) atau kode tiket"
+              placeholder="Tempel token QR (BTHT:…) atau tautan tiket (barokah.travel/tiket/…)"
               className="w-full rounded-xl border border-[#dfe4e8] bg-[#f8fafc] px-4 py-3 text-sm font-semibold text-[#1b3555] outline-none placeholder:text-[#9aa3af] focus:border-[#1b4f9c] focus:bg-white focus:ring-2 focus:ring-[#1b4f9c]/15"
             />
             <button

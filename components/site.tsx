@@ -26,7 +26,7 @@ export function Navbar() {
         </nav>
         <Link href="/login" className="hidden items-center gap-2 rounded-md border border-white/25 px-4 py-2.5 text-sm font-bold text-white transition-colors duration-200 hover:bg-white/10 sm:flex">Masuk</Link>
         <a href="https://wa.me/6285930005544" className="hidden items-center gap-2 rounded-md bg-[#f5b915] px-4 py-2.5 text-sm font-bold text-[#1d2733] transition-colors duration-200 hover:bg-[#e4aa09] sm:flex"><Phone size={15}/> Hubungi Kami</a>
-        <button className="relative z-[70] flex h-10 w-10 items-center justify-center sm:hidden" onClick={()=>setOpen(!open)} aria-label={open ? 'Tutup menu' : 'Buka menu'} aria-expanded={open}>
+        <button type="button" className="relative z-[70] flex h-10 w-10 items-center justify-center sm:hidden" onClick={()=>setOpen(!open)} aria-label={open ? 'Tutup menu' : 'Buka menu'} aria-expanded={open}>
           <span className={`absolute transition-all duration-300 ${open ? 'rotate-90 scale-75 opacity-0' : 'opacity-100'}`}><Menu /></span>
           <span className={`absolute transition-all duration-300 ${open ? 'opacity-100' : '-rotate-90 opacity-0'}`}><X /></span>
         </button>

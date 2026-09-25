@@ -104,6 +104,21 @@ export function ParticipantTable({
     return () => window.removeEventListener(PARTICIPANTS_CHANGED_EVENT, onChanged)
   }, [loadPage])
 
+  useEffect(() => {
+    if (busFilter !== 'all' && !buses.some((bus) => bus.id === busFilter)) {
+      setBusFilter('all')
+    }
+  }, [buses, busFilter])
+
+  const attendedRef = useRef(totalAttended)
+
+  useEffect(() => {
+    if (attendedRef.current !== totalAttended) {
+      attendedRef.current = totalAttended
+      loadPage(0, false)
+    }
+  }, [totalAttended, loadPage])
+
   const groups = useMemo(() => {
     const byBus = new Map<string, RowParticipant[]>()
     for (const p of items) {

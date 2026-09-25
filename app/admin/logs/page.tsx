@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: 'Riwayat – Panel Admin', robots: { 
 export const dynamic = 'force-dynamic'
 
 const PER_PAGE = 50
-type SearchParams = Promise<{ page?: string; action?: string; eventId?: string; userId?: string }>
+type SearchParams = Promise<{ page?: string; action?: string; eventId?: string; userId?: string; from?: string; to?: string }>
 
 export default async function AdminLogsPage({ searchParams }: { searchParams: SearchParams }) {
   const sp = await searchParams
@@ -18,10 +18,18 @@ export default async function AdminLogsPage({ searchParams }: { searchParams: Se
   const eventId = typeof sp.eventId === 'string' && sp.eventId !== 'semua' ? sp.eventId : null
   const userId = typeof sp.userId === 'string' && sp.userId !== 'semua' ? sp.userId : null
 
+  const fromRaw = typeof sp.from === 'string' ? sp.from : ''
+  const toRaw = typeof sp.to === 'string' ? sp.to : ''
+  const from = fromRaw ? new Date(`${fromRaw}T00:00:00`) : null
+  const to = toRaw ? new Date(`${toRaw}T23:59:59.999`) : null
+  const fromValid = from && !isNaN(from.getTime()) ? from : null
+  const toValid = to && !isNaN(to.getTime()) ? to : null
+
   const where: Record<string, unknown> = {
     ...(action ? { action } : {}),
     ...(eventId ? { eventId } : {}),
     ...(userId ? { userId } : {}),
+    ...(fromValid || toValid ? { createdAt: { ...(fromValid ? { gte: fromValid } : {}), ...(toValid ? { lte: toValid } : {}) } } : {}),
   }
 
   const [logs, total, users, events] = await Promise.all([
@@ -43,7 +51,14 @@ export default async function AdminLogsPage({ searchParams }: { searchParams: Se
 
   const qs = (patch: Record<string, string>): string => {
     const p = new URLSearchParams()
-    for (const [k, v] of Object.entries({ action: action ?? '', eventId: eventId ?? '', userId: userId ?? '', page: String(page) })) {
+    for (const [k, v] of Object.entries({
+      action: action ?? '',
+      eventId: eventId ?? '',
+      userId: userId ?? '',
+      from: fromRaw,
+      to: toRaw,
+      page: String(page),
+    })) {
       if (v && v !== 'semua') p.set(k, v)
     }
     for (const [k, v] of Object.entries(patch)) {
@@ -114,13 +129,31 @@ export default async function AdminLogsPage({ searchParams }: { searchParams: Se
             ))}
           </select>
         </label>
+        <label className="text-xs">
+          <span className="mb-1 block font-bold text-[#657080]">Dari tanggal</span>
+          <input
+            type="date"
+            name="from"
+            defaultValue={fromRaw}
+            className="rounded-xl border border-[#dfe4e8] bg-white px-3 py-2 text-sm font-semibold text-[#1b3555]"
+          />
+        </label>
+        <label className="text-xs">
+          <span className="mb-1 block font-bold text-[#657080]">Sampai tanggal</span>
+          <input
+            type="date"
+            name="to"
+            defaultValue={toRaw}
+            className="rounded-xl border border-[#dfe4e8] bg-white px-3 py-2 text-sm font-semibold text-[#1b3555]"
+          />
+        </label>
         <button
           type="submit"
           className="rounded-xl bg-[#1b4f9c] px-4 py-2.5 text-sm font-bold text-white transition-colors duration-200 hover:bg-[#16407d]"
         >
           Terapkan
         </button>
-        {(action || eventId || userId) && (
+        {(action || eventId || userId || fromRaw || toRaw) && (
           <Link
             href="/admin/logs"
             className="rounded-xl border border-[#dfe4e8] bg-white px-4 py-2.5 text-sm font-bold text-[#657080] hover:bg-[#f1f3f5]"

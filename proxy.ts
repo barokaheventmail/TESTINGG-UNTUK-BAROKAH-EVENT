@@ -2,7 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { jwtVerify } from 'jose'
 import { COOKIE_NAME } from '@/lib/auth'
 
-const secret = () => new TextEncoder().encode(process.env.JWT_SECRET ?? 'dev-secret-change-me')
+const DEV_SECRET = 'dev-secret-change-me'
+
+const secret = () => {
+  const value = process.env.JWT_SECRET || DEV_SECRET
+  if (value === DEV_SECRET && process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET wajib di-set di lingkungan produksi.')
+  }
+  return new TextEncoder().encode(value)
+}
 
 async function getSession(request: NextRequest) {
   const token = request.cookies.get(COOKIE_NAME)?.value

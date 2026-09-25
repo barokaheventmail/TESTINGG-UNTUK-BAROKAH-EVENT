@@ -44,7 +44,7 @@ input[type='number']::-webkit-inner-spin-button,
 input[type='number']::-webkit-outer-spin-button { -webkit-appearance:none; margin:0; }
 input[type='number'] { -moz-appearance:textfield; appearance:textfield; }
 @media print {
-  body { background:#fff !important; }
+  body { background:#fff !important; margin:0; }
   body * { visibility:hidden; }
   .print-ticket, .print-ticket * { visibility:visible; }
   .print-ticket { position:absolute; left:0; top:0; width:100%; max-width:none; border:none; box-shadow:none; border-radius:0; }

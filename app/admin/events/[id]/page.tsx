@@ -1,9 +1,9 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
-import { ArrowLeft, Bus, CalendarDays, History, MapPin, Printer } from 'lucide-react'
+import { ArrowLeft, Bus, CalendarDays, Download, History, MapPin, Printer } from 'lucide-react'
 import { prisma } from '@/lib/db'
-import { formatTanggalPendek } from '@/lib/dates'
+import { formatWaktuLengkap } from '@/lib/dates'
 import { EditEvent } from '@/components/admin/edit-event'
 import { DeleteEvent } from '@/components/admin/delete-event'
 import { ImportExcel } from '@/components/admin/import-excel'
@@ -12,7 +12,6 @@ import { AddBus } from '@/components/admin/add-bus'
 import { AddParticipant } from '@/components/admin/add-participant'
 import { BusChip } from '@/components/admin/bus-chip'
 import { ResetAttendance } from '@/components/admin/reset-attendance'
-import { ClearEventData } from '@/components/admin/clear-event-data'
 import { LogEntry } from '@/components/admin/log-entry'
 
 const MANAGEMENT_ACTIONS: string[] = ['scan.attended', 'scan.duplicate']
@@ -82,7 +81,7 @@ export default async function EventDetail({ params }: { params: Promise<{ id: st
           </div>
           <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#657080]">
             <span className="flex items-center gap-1">
-              <CalendarDays size={13} /> {formatTanggalPendek(new Date(event.date))}
+              <CalendarDays size={13} /> {formatWaktuLengkap(new Date(event.date))}
             </span>
             {event.location && (
               <span className="flex items-center gap-1">
@@ -93,6 +92,13 @@ export default async function EventDetail({ params }: { params: Promise<{ id: st
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <ResetAttendance eventId={event.id} attendedCount={totalAttended} />
+          <a
+            href={`/api/admin/events/${event.id}/export`}
+            download
+            className="flex items-center gap-1.5 rounded-full border border-[#dfe4e8] bg-white px-4 py-2.5 text-sm font-bold text-[#1b3555] transition-colors duration-200 hover:bg-[#f1f3f5] active:scale-95"
+          >
+            <Download size={15} /> Export CSV
+          </a>
           <Link
             href={`/admin/events/${event.id}/qr`}
             className="flex items-center gap-1.5 rounded-full bg-[#f5b915] px-5 py-2.5 text-sm font-bold text-[#1d2733] transition-colors duration-200 hover:bg-[#e4aa09] active:scale-95"
@@ -216,12 +222,6 @@ export default async function EventDetail({ params }: { params: Promise<{ id: st
           </>
         )}
       </div>
-
-      <ClearEventData
-        eventId={event.id}
-        busesCount={buses.length}
-        participantsCount={totalParticipants}
-      />
     </div>
   )
 }

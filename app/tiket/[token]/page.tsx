@@ -5,6 +5,7 @@ import { BadgeCheck, Bus, Clock3, DoorOpen, MapPin } from 'lucide-react'
 import { prisma } from '@/lib/db'
 import { qrDataUrl, encodeToken } from '@/lib/scan'
 import { formatTanggalPendek } from '@/lib/dates'
+import { PrintButton } from '@/components/admin/print-button'
 
 export const metadata: Metadata = { title: 'Tiket Peserta – Barokah Tour and Travel', robots: { index: false } }
 export const dynamic = 'force-dynamic'
@@ -29,7 +30,10 @@ export default async function TicketPage({ params }: { params: Promise<{ token: 
   return (
     <main className="min-h-screen bg-[#f4f7fa] px-4 py-8">
       <div className="mx-auto w-full max-w-md">
-        <div className="overflow-hidden rounded-2xl border border-[#dfe4e8] bg-white shadow-2xl">
+        <div className="mb-4 flex justify-center print:hidden">
+          <PrintButton />
+        </div>
+        <div className="print-ticket overflow-hidden rounded-2xl border border-[#dfe4e8] bg-white shadow-2xl">
           <div className="bg-[#1b4f9c] px-6 py-5 text-white">
             <p className="text-xs font-bold uppercase tracking-wider text-white/60">Barokah Tour &amp; Travel</p>
             <p className="mt-1 text-lg font-bold">Tiket Wisata</p>
@@ -120,10 +124,10 @@ export default async function TicketPage({ params }: { params: Promise<{ token: 
         </div>
 
         <Link
-          href="/"
+          href={`/event/${p.eventId}`}
           className="mt-5 block text-center text-xs font-bold text-[#657080] transition-colors hover:text-[#1b4f9c]"
         >
-          ← Kembali ke beranda
+          ← Kembali ke detail event
         </Link>
       </div>
     </main>

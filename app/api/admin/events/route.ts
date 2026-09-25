@@ -44,12 +44,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Tanggal tidak valid.' }, { status: 400 })
   }
 
-  const event = await prisma.event.create({
-    data: { title, date: d, location, status, note: note || null },
-  })
-
-  await prisma.activityLog.create({
-    data: { eventId: event.id, userId: session.sub, action: 'event.create', detail: { title, date: d.toISOString() } },
+  const event = await prisma.$transaction(async (tx) => {
+    const created = await tx.event.create({
+      data: { title, date: d, location, status, note: note || null },
+    })
+    await tx.activityLog.create({
+      data: { eventId: created.id, userId: session.sub, action: 'event.create', detail: { title, date: d.toISOString() } },
+    })
+    return created
   })
   logger.info('event created', { eventId: event.id, by: session.username })
 

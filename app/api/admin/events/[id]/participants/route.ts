@@ -106,33 +106,37 @@ export async function POST(request: NextRequest, { params }: Params) {
   const { name, phone, seat, room, vw, busName } = parsed.data
   const wantedBus = busName || 'Bus 1'
 
-  let bus = await prisma.bus.findUnique({ where: { eventId_name: { eventId: id, name: wantedBus } } })
-  if (!bus) {
-    const order = await prisma.bus.count({ where: { eventId: id } })
-    bus = await prisma.bus.create({ data: { eventId: id, name: wantedBus, order: order + 1 } })
-  }
+  const participant = await prisma.$transaction(async (tx) => {
+    let bus = await tx.bus.findUnique({ where: { eventId_name: { eventId: id, name: wantedBus } } })
+    if (!bus) {
+      const order = await tx.bus.count({ where: { eventId: id } })
+      bus = await tx.bus.create({ data: { eventId: id, name: wantedBus, order: order + 1 } })
+    }
 
-  const maxOrder = await prisma.participant.aggregate({
-    where: { busId: bus.id },
-    _max: { order: true },
+    const maxOrder = await tx.participant.aggregate({
+      where: { busId: bus.id },
+      _max: { order: true },
+    })
+
+    const created = await tx.participant.create({
+      data: {
+        eventId: id,
+        busId: bus.id,
+        order: (maxOrder._max.order ?? 0) + 1,
+        name,
+        phone: phone || null,
+        seat: seat || null,
+        room: room || null,
+        vw: vw || null,
+      },
+    })
+
+    await tx.activityLog.create({
+      data: { eventId: id, userId: session.sub, action: 'participant.create', detail: { name, bus: bus.name } },
+    })
+    return created
   })
 
-  const participant = await prisma.participant.create({
-    data: {
-      eventId: id,
-      busId: bus.id,
-      order: (maxOrder._max.order ?? 0) + 1,
-      name,
-      phone: phone || null,
-      seat: seat || null,
-      room: room || null,
-      vw: vw || null,
-    },
-  })
-
-  await prisma.activityLog.create({
-    data: { eventId: id, userId: session.sub, action: 'participant.create', detail: { name, bus: bus.name } },
-  })
   logger.info('participant created manually', { eventId: id, by: session.username, name })
 
   return NextResponse.json({ participant }, { status: 201 })

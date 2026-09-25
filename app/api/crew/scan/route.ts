@@ -43,34 +43,50 @@ export async function POST(request: NextRequest) {
   }
 
   // Atomic: hanya satu crew yang bisa menandai peserta ini pertama kali.
-  const first = await prisma.participant.updateMany({
-    where: { id: p.id, scannedAt: null },
-    data: { scannedAt: new Date(), scannedById: session.sub },
-  })
+  let outcome: { firstScan: boolean; fresh: { scannedAt: Date | null; scannedBy: { username: string } | null } | null }
 
-  const attendedNow = first.count === 1
-  const status = attendedNow ? 'attended' : 'already'
+  try {
+    outcome = await prisma.$transaction(async (tx) => {
+      const first = await tx.participant.updateMany({
+        where: { id: p.id, scannedAt: null },
+        data: { scannedAt: new Date(), scannedById: session.sub },
+      })
 
-  await prisma.scanLog.create({
-    data: { participantId: p.id, userId: session.sub, status },
-  })
+      const firstScan = first.count === 1
+      const status = firstScan ? 'attended' : 'already'
 
-  await prisma.activityLog.create({
-    data: { eventId: p.event.id, userId: session.sub, action: attendedNow ? 'scan.attended' : 'scan.duplicate', detail: { name: p.name } },
-  })
-  logger.info(attendedNow ? 'scan attended' : 'scan duplicate', {
+      await tx.scanLog.create({
+        data: { participantId: p.id, userId: session.sub, status },
+      })
+
+      await tx.activityLog.create({
+        data: { eventId: p.event.id, userId: session.sub, action: firstScan ? 'scan.attended' : 'scan.duplicate', detail: { name: p.name } },
+      })
+
+      const fresh = await tx.participant.findUnique({
+        where: { id: p.id },
+        select: { scannedAt: true, scannedBy: { select: { username: true } } },
+      })
+      return { firstScan, fresh }
+    })
+  } catch (e) {
+    logger.error('scan txn failed', { by: session.username, participant: p.name, eventId: p.event.id, error: e instanceof Error ? e.message : 'unknown' })
+    return NextResponse.json({ error: 'Gagal mencatat scan.' }, { status: 500 })
+  }
+
+  const { firstScan, fresh } = outcome
+  logger.info(firstScan ? 'scan attended' : 'scan duplicate', {
     by: session.username,
     participant: p.name,
     eventId: p.event.id,
   })
 
-  const now = p.scannedAt
   const result = {
     ok: true,
-    firstScan: attendedNow,
-    alreadyAttended: !attendedNow,
-    attendedAt: attendedNow ? new Date().toISOString() : now?.toISOString() ?? null,
-    scannedBy: attendedNow ? session.username : p.scannedBy?.username ?? null,
+    firstScan,
+    alreadyAttended: !firstScan,
+    attendedAt: fresh?.scannedAt?.toISOString() ?? null,
+    scannedBy: fresh?.scannedBy?.username ?? null,
     participant: {
       name: p.name,
       order: p.order,

@@ -91,7 +91,7 @@ export default async function EventQR({
       />
 
       {selectedIds === null ? (
-        <div className="mt-8 rounded-2xl border border-dashed border-[#bfd3c4] bg-white p-10 text-center">
+        <div className="mt-8 rounded-2xl border border-dashed border-[#bfd3c4] bg-white p-10 text-center print:hidden">
           <p className="text-sm font-bold text-[#1b3555]">Pilih bus untuk mencetak QR</p>
           <p className="mt-1 text-xs text-[#657080]">
             Klik satu atau lebih nama bus di atas, lalu tekan Cetak. Ini mencegah halaman memuat ribuan QR sekaligus dan
@@ -99,12 +99,12 @@ export default async function EventQR({
           </p>
         </div>
       ) : selectedIds.length === 0 ? (
-        <div className="mt-8 rounded-2xl border border-dashed border-[#bfd3c4] bg-white p-10 text-center">
+        <div className="mt-8 rounded-2xl border border-dashed border-[#bfd3c4] bg-white p-10 text-center print:hidden">
           <p className="text-sm font-bold text-[#1b3555]">Tidak ada bus yang dipilih</p>
           <p className="mt-1 text-xs text-[#657080]">Pilih minimal satu bus untuk dicetak.</p>
         </div>
       ) : (
-        <div className="space-y-8">
+        <div className="print-ticket space-y-8">
           {sections.map(({ bus, cards }) => (
             <div key={bus.id}>
               <h2 className="mb-3 border-b-2 border-[#1b4f9c] pb-1 text-left text-base font-black uppercase text-[#1b4f9c]">

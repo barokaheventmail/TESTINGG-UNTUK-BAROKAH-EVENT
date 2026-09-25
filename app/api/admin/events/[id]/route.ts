@@ -45,13 +45,15 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   const d = new Date(date)
   if (isNaN(d.getTime())) return NextResponse.json({ error: 'Tanggal tidak valid.' }, { status: 400 })
 
-  const event = await prisma.event.update({
-    where: { id },
-    data: { title, date: d, location, status, note: note || null },
-  })
-
-  await prisma.activityLog.create({
-    data: { eventId: id, userId: session.sub, action: 'event.update', detail: { title } },
+  const event = await prisma.$transaction(async (tx) => {
+    const updated = await tx.event.update({
+      where: { id },
+      data: { title, date: d, location, status, note: note || null },
+    })
+    await tx.activityLog.create({
+      data: { eventId: id, userId: session.sub, action: 'event.update', detail: { title } },
+    })
+    return updated
   })
   logger.info('event updated', { eventId: id, by: session.username })
 
@@ -68,10 +70,12 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
   const existing = await prisma.event.findUnique({ where: { id } })
   if (!existing) return NextResponse.json({ error: 'Event tidak ditemukan.' }, { status: 404 })
 
-  await prisma.activityLog.create({
-    data: { eventId: id, userId: session.sub, action: 'event.delete', detail: { title: existing.title } },
+  await prisma.$transaction(async (tx) => {
+    await tx.activityLog.create({
+      data: { eventId: id, userId: session.sub, action: 'event.delete', detail: { title: existing.title } },
+    })
+    await tx.event.delete({ where: { id } })
   })
-  await prisma.event.delete({ where: { id } })
   logger.info('event deleted', { eventId: id, title: existing.title, by: session.username })
 
   return NextResponse.json({ ok: true })

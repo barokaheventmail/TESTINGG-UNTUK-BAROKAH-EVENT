@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useRef, useState } from 'react'
 import { CheckCircle2, Download, FileSpreadsheet, Loader2, UploadCloud } from 'lucide-react'
+import { notifyParticipantsChanged } from '@/lib/events'
 
 type Result = {
   created: number
@@ -31,6 +32,7 @@ export function ImportExcel({ eventId }: { eventId: string }) {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Import gagal.')
       setResult(data)
+      notifyParticipantsChanged()
       router.refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Import gagal.')

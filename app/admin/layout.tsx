@@ -1,10 +1,12 @@
 import Link from 'next/link'
 import { History, LayoutDashboard, QrCode } from 'lucide-react'
+import { AutoRefresh } from '@/components/admin/auto-refresh'
 import { LogoutButton } from '@/components/admin/logout-button'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-[#f4f7fa]">
+      <AutoRefresh />
       <header className="sticky top-0 z-30 border-b border-[#dfe4e8] bg-white/90 print:hidden backdrop-blur">
         <div className="container-wide flex h-16 items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
