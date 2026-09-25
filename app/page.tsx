@@ -1,20 +1,24 @@
 import type { Metadata } from 'next'
-import { Phone } from 'lucide-react'
+import { CalendarDays, Phone } from 'lucide-react'
 import { BannerSlideshow } from '@/components/banner-slideshow'
 import { Footer, Navbar, TrustStrip } from '@/components/site'
-import { SearchTabs } from '@/components/search-tabs'
-import { PackageCard } from '@/components/package-card'
+import { TicketSearch } from '@/components/ticket-search'
+import { EventCard } from '@/components/event-card'
+import { prisma } from '@/lib/db'
+import { formatTanggalPendek } from '@/lib/dates'
 
 export const metadata: Metadata = {
-  title: 'Barokah Tour and Travel | Paket Wisata & Perjalanan dari Sukabumi',
+  title: 'Barokah Tour and Travel | Event & Perjalanan dari Sukabumi',
   description:
-    'Paket wisata domestik & mancanegara, study tour, persewaan transportasi wisata, dan tiket. Agen resmi Ancol dan mitra ASITA dari Sukabumi.',
+    'Event wisata, study tour, persewaan transportasi wisata, dan tiket. Agen resmi Ancol dan mitra ASITA dari Sukabumi.',
   openGraph: {
     title: 'Barokah Tour and Travel | Jelajahi Indonesia',
     description: 'Rencanakan perjalanan nyaman dan berkesan bersama Barokah Tour and Travel dari Sukabumi.',
     type: 'website',
   },
 }
+
+export const dynamic = 'force-dynamic'
 
 const layanan = [
   'Tour Package Domestik dan Mancanegara',
@@ -26,36 +30,13 @@ const layanan = [
   'Agen Resmi PT. Taman Impian Jaya Ancol',
 ]
 
-const packages = [
-  {
-    title: 'Open Trip Ancol–Dufan',
-    href: '/paket/open-trip-ancol-dufan',
-    duration: '1 Hari',
-    price: 'Rp 425.000',
-    badge: 'Paling diminati',
-    location: 'Jakarta',
-    rating: '4.9',
-    image:
-      'https://images.unsplash.com/photo-1564507592333-c60657eea523?auto=format&fit=crop&w=900&q=80',
-    keywords: ['ancol', 'dufan', 'jakarta'],
-    highlights: ['Tiket masuk Dufan', 'Transportasi AC', 'Makan siang'],
-  },
-  {
-    title: 'Open Trip Yogyakarta',
-    href: '/paket/open-trip-yogyakarta',
-    duration: '3D2N',
-    price: 'Rp 1.450.000',
-    badge: 'Pilihan keluarga',
-    location: 'DI Yogyakarta',
-    rating: '4.8',
-    image:
-      'https://images.unsplash.com/photo-1596402184320-417e7178b2cd?auto=format&fit=crop&w=900&q=80',
-    keywords: ['yogyakarta', 'jogja', 'borobudur', 'malioboro'],
-    highlights: ['Transportasi wisata', 'Hotel & sarapan', 'Wisata pilihan'],
-  },
-]
+export default async function Home() {
+  const events = await prisma.event.findMany({
+    where: { status: 'ACTIVE' },
+    orderBy: { date: 'desc' },
+    include: { _count: { select: { buses: true, participants: true } } },
+  })
 
-export default function Home() {
   return (
     <main>
       <section id="beranda" className="relative min-h-[650px] text-white">
@@ -68,10 +49,11 @@ export default function Home() {
               Jelajahi Indonesia, <em className="font-serif italic font-normal text-[#f5b915]">lebih bermakna.</em>
             </h1>
             <p className="animate-fade-up delay-3 mt-5 max-w-lg text-base leading-relaxed text-white/80 md:text-lg">
-              Rencanakan perjalanan yang nyaman dan berkesan bersama Barokah Tour and Travel dari Sukabumi.
+              Pilih event di bawah untuk melihat rincian bus &amp; peserta. Pencarian nama untuk melihat tiket &amp; QR ada di
+              halaman tiap event.
             </p>
             <div className="animate-fade-up delay-4 relative z-50">
-              <SearchTabs packages={packages} />
+              <TicketSearch disabled />
             </div>
           </div>
         </div>
@@ -79,19 +61,31 @@ export default function Home() {
 
       <TrustStrip />
 
-      <section id="paket" className="container-wide py-20">
+      <section id="event" className="container-wide py-20">
         <div className="mb-10 max-w-2xl">
-          <p className="eyebrow mb-2">Pilihan perjalanan</p>
-          <h2 className="text-3xl font-bold text-[#1b3555] md:text-4xl">Paket Populer</h2>
+          <p className="eyebrow mb-2">Agenda perjalanan</p>
+          <h2 className="text-3xl font-bold text-[#1b3555] md:text-4xl">Event</h2>
           <p className="mt-3 leading-relaxed text-[#657080]">
-            Temukan perjalanan yang sudah kami siapkan untuk menemani waktu terbaik Anda.
+            Event perjalanan yang sedang berlangsung, dikelola langsung oleh admin. Pilih event untuk melihat rincian
+            bus dan peserta.
           </p>
         </div>
-        <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-4">
-          {packages.map((item) => (
-            <PackageCard key={item.title} item={item} />
-          ))}
-        </div>
+        {events.length > 0 ? (
+          <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-4">
+            {events.map((event) => (
+              <EventCard key={event.id} event={event} />
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-[#dfe4e8] bg-white p-10 text-center shadow-sm">
+            <CalendarDays className="mx-auto text-[#b9c4d2]" size={32} />
+            <p className="mt-3 text-sm font-bold text-[#1b3555]">Belum ada event</p>
+            <p className="mx-auto mt-1 max-w-md text-xs leading-relaxed text-[#657080]">
+Admin belum menambahkan event. Anda tetap bisa mengecek tiket &amp; QR peserta lewat halaman event saat
+                tersedia.
+            </p>
+          </div>
+        )}
       </section>
 
       <div className="relative overflow-hidden bg-[#edf5ef]">
@@ -164,7 +158,7 @@ export default function Home() {
         </section>
 
         <section className="container-wide relative py-12">
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1a4a8a] via-[#163d78] to-[#0e2b55] px-6 py-12 shadow-2xl shadow-[#163d78]/25 md:px-12 md:py-16">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1a4a8a] via-[#163d78] to-[#0e2b55] px-5 py-12 shadow-2xl shadow-[#163d78]/25 sm:px-6 md:px-12 md:py-16">
           <div className="guide-pattern absolute inset-0 opacity-30" aria-hidden />
 
           <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[#f5b915]/20 blur-3xl" aria-hidden />
@@ -173,17 +167,17 @@ export default function Home() {
           <div className="absolute -bottom-20 -right-16 hidden h-64 w-64 rounded-full border-[22px] border-white/5 md:block" aria-hidden />
           <div className="absolute bottom-10 right-8 hidden h-24 w-24 rounded-full border border-dashed border-white/15 lg:block" aria-hidden />
 
-          <div className="relative flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
+          <div className="relative flex flex-col items-start justify-between gap-5 sm:flex-row sm:items-center sm:gap-6">
             <div>
               <p className="eyebrow !text-[#f5b915]">Butuh bantuan?</p>
-              <h2 className="mt-2 whitespace-nowrap text-3xl font-bold leading-tight text-white md:text-4xl">
+              <h2 className="mt-2 text-3xl font-bold leading-tight text-white sm:whitespace-nowrap md:text-4xl">
                 Rencanakan Perjalanan <span className="font-serif italic text-[#f5b915]">Bersama Kami</span>
               </h2>
               <p className="mt-2 text-white/75">Tim Barokah siap membantu menjawab kebutuhan perjalanan Anda.</p>
             </div>
             <a
               href="https://wa.me/6285930005544"
-              className="group flex shrink-0 items-center gap-2.5 rounded-full bg-[#f5b915] px-7 py-3.5 text-sm font-bold text-[#1d2733] shadow-lg shadow-[#f5b915]/30 transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#e4aa09] hover:shadow-xl hover:shadow-[#f5b915]/40 active:scale-95"
+              className="group flex w-full shrink-0 items-center justify-center gap-2.5 rounded-full bg-[#f5b915] px-7 py-3.5 text-sm font-bold text-[#1d2733] shadow-lg shadow-[#f5b915]/30 transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#e4aa09] hover:shadow-xl hover:shadow-[#f5b915]/40 active:scale-95 sm:w-auto"
             >
               <Phone size={16} className="transition-transform duration-200 group-hover:-rotate-12" />
               Chat via WhatsApp

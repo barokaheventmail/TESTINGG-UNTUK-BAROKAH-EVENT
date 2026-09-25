@@ -20,7 +20,8 @@
 
 :root { color-scheme: light; --background:#faf9f5; --foreground:#1d2733; --card:#ffffff; --card-foreground:#1d2733; --primary:#1b4f9c; --primary-foreground:#ffffff; --muted:#f1f3f5; --muted-foreground:#657080; --border:#dfe4e8; --ring:#1b4f9c; }
 * { @apply border-border; }
-html { scroll-behavior:smooth; scroll-padding-top:84px; }
+html { scroll-behavior:smooth; scroll-padding-top:84px; scrollbar-width:none; -ms-overflow-style:none; }
+html::-webkit-scrollbar { display:none; }
 body { @apply bg-background text-foreground; font-family: Arial, Helvetica, sans-serif; }
 h1,h2,h3,h4 { font-family: Arial, Helvetica, sans-serif; letter-spacing: -0.02em; }
 .container-wide { width:min(1120px, calc(100% - 2rem)); margin-inline:auto; }

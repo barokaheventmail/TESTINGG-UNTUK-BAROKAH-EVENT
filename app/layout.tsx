@@ -4,7 +4,7 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: 'Barokah Tour and Travel | Jelajahi Indonesia',
-  description: 'Paket wisata, transportasi, dan perjalanan terpercaya dari Sukabumi.',
+  description: 'Event wisata, transportasi, dan perjalanan terpercaya dari Sukabumi.',
   generator: 'v0.app',
   icons: {
     icon: [

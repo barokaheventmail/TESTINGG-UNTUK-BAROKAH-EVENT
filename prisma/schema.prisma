@@ -1,0 +1,121 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  CREW
+}
+
+enum EventStatus {
+  DRAFT
+  ACTIVE
+  CLOSED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  name         String?
+  role         Role     @default(CREW)
+  createdAt    DateTime @default(now())
+
+  scannedLogs      ScanLog[]
+  activities       ActivityLog[]
+  scannedBySlots   Participant[] @relation("ScannedBy")
+}
+
+model Event {
+  id        String      @id @default(cuid())
+  title     String
+  date      DateTime
+  location  String      @default("")
+  status    EventStatus @default(ACTIVE)
+  note      String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  buses        Bus[]
+  participants Participant[]
+  activities   ActivityLog[]
+
+  @@index([date])
+}
+
+model Bus {
+  id        String   @id @default(cuid())
+  eventId   String
+  name      String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  event        Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  participants Participant[]
+
+  @@unique([eventId, name])
+  @@index([eventId])
+}
+
+model Participant {
+  id             String    @id @default(cuid())
+  eventId        String
+  busId          String
+  order          Int
+  name           String
+  birthPlace     String?
+  birthDate      DateTime?
+  phone          String?
+  seat           String?
+  room           String?
+  vw             String?
+  token          String    @unique @default(cuid())
+  scannedAt      DateTime?
+  scannedById    String?
+  scannedAtEvent DateTime?
+  createdAt      DateTime  @default(now())
+
+  event        Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  bus          Bus      @relation(fields: [busId], references: [id], onDelete: Cascade)
+  scannedBy    User?    @relation("ScannedBy", fields: [scannedById], references: [id], onDelete: SetNull)
+  scanLogs     ScanLog[]
+
+  @@index([eventId, busId])
+  @@index([eventId, name])
+  @@index([scannedAt])
+  @@unique([eventId, busId, order])
+}
+
+model ScanLog {
+  id            String   @id @default(cuid())
+  participantId String
+  userId        String?
+  status        String   @default("attended")
+  createdAt     DateTime @default(now())
+
+  participant Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  user        User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([participantId])
+  @@index([createdAt])
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  eventId   String?
+  userId    String?
+  action    String
+  detail    Json?
+  createdAt DateTime @default(now())
+
+  event Event? @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  user  User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([eventId])
+  @@index([createdAt])
+}

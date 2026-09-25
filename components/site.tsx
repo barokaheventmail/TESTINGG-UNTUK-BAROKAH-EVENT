@@ -17,13 +17,14 @@ export function Navbar() {
       <div className="container-wide flex h-[76px] items-center justify-between">
         <Logo light />
         <nav className="desktop-nav flex items-center gap-7 text-sm font-semibold">
-          {([['Beranda','#beranda'],['Paket Wisata','#paket'],['Panduan Peserta','/panduan'],['Tentang Kami','/#tentang'],['Kontak','#kontak']] as const).map(([label, href]) => (
+          {([['Beranda','#beranda'],['Event','#event'],['Panduan Peserta','/panduan'],['Tentang Kami','/#tentang'],['Kontak','#kontak']] as const).map(([label, href]) => (
             <Link key={label as string} href={href as string} onClick={()=>setOpen(false)} className="group relative inline-block transition-colors duration-300 hover:text-[#f5b915]">
               {label as string}
               <span className="absolute -bottom-1 left-0 h-[2px] w-full origin-left scale-x-0 rounded-full bg-[#f5b915] transition-transform duration-300 ease-out group-hover:scale-x-100" />
             </Link>
           ))}
         </nav>
+        <Link href="/login" className="hidden items-center gap-2 rounded-md border border-white/25 px-4 py-2.5 text-sm font-bold text-white transition-colors duration-200 hover:bg-white/10 sm:flex">Masuk</Link>
         <a href="https://wa.me/6285930005544" className="hidden items-center gap-2 rounded-md bg-[#f5b915] px-4 py-2.5 text-sm font-bold text-[#1d2733] transition-colors duration-200 hover:bg-[#e4aa09] sm:flex"><Phone size={15}/> Hubungi Kami</a>
         <button className="relative z-[70] flex h-10 w-10 items-center justify-center sm:hidden" onClick={()=>setOpen(!open)} aria-label={open ? 'Tutup menu' : 'Buka menu'} aria-expanded={open}>
           <span className={`absolute transition-all duration-300 ${open ? 'rotate-90 scale-75 opacity-0' : 'opacity-100'}`}><Menu /></span>
@@ -34,10 +35,11 @@ export function Navbar() {
       <nav className={`absolute left-0 right-0 top-[76px] z-[60] mx-auto w-[min(1120px,calc(100%-2rem))] rounded-2xl border border-[#dfe4e8] bg-white p-4 text-[#1d2733] shadow-2xl transition-all duration-300 sm:hidden ${open ? 'translate-y-0 opacity-100' : 'pointer-events-none -translate-y-3 opacity-0'}`}>
         <div className="flex flex-col divide-y divide-[#f1f3f5] text-sm font-semibold">
           <Link href="#beranda" onClick={()=>setOpen(false)} className="-mx-3 rounded-lg px-3 py-3 transition-colors duration-200 hover:bg-[#f1f3f5]">Beranda</Link>
-          <Link href="#paket" onClick={()=>setOpen(false)} className="-mx-3 rounded-lg px-3 py-3 transition-colors duration-200 hover:bg-[#f1f3f5]">Paket Wisata</Link>
+          <Link href="#event" onClick={()=>setOpen(false)} className="-mx-3 rounded-lg px-3 py-3 transition-colors duration-200 hover:bg-[#f1f3f5]">Event</Link>
           <Link href="/panduan" onClick={()=>setOpen(false)} className="-mx-3 rounded-lg px-3 py-3 transition-colors duration-200 hover:bg-[#f1f3f5]">Panduan Peserta</Link>
           <Link href="/#tentang" onClick={()=>setOpen(false)} className="-mx-3 rounded-lg px-3 py-3 transition-colors duration-200 hover:bg-[#f1f3f5]">Tentang Kami</Link>
           <Link href="#kontak" onClick={()=>setOpen(false)} className="-mx-3 rounded-lg px-3 py-3 transition-colors duration-200 hover:bg-[#f1f3f5]">Kontak</Link>
+          <Link href="/login" onClick={()=>setOpen(false)} className="-mx-3 rounded-lg px-3 py-3 font-bold text-[#1b4f9c] transition-colors duration-200 hover:bg-[#f1f3f5]">Masuk Panel (Admin/Crew)</Link>
         </div>
         <a href="https://wa.me/6285930005544" className="mt-4 flex items-center justify-center gap-2 rounded-lg bg-[#f5b915] px-4 py-2.5 text-sm font-bold text-[#1d2733] transition-colors duration-200 hover:bg-[#e4aa09]"><Phone size={15}/> Hubungi Kami</a>
       </nav>
@@ -152,7 +154,7 @@ const SOCMED = [
   { name: 'youtube' as const, label: 'YouTube', href: '#' },
 ]
 
-export function Footer(){return <footer id="kontak" className="bg-[#163d78] py-12 text-white"><div className="container-wide grid gap-10 md:grid-cols-[1.4fr_1fr_1.2fr]"><div><Logo light/><p className="mt-5 max-w-xs text-sm leading-relaxed text-white/70">Mitra perjalanan terpercaya dari Sukabumi untuk menjelajah Indonesia bersama keluarga, sekolah, dan perusahaan.</p><div className="mt-5 flex items-center gap-3">{SOCMED.map((s) => (<a key={s.name} href={s.href} aria-label={s.label} className="group flex h-9 w-9 items-center justify-center transition-transform duration-300 hover:-translate-y-0.5"><SocialIcon name={s.name} /></a>))}</div></div><div><h3 className="mb-4 font-sans text-sm font-bold uppercase tracking-wider">Tautan Cepat</h3><div className="flex flex-col gap-3 text-sm text-white/70"><Link href="/#paket">Paket Wisata</Link><Link href="/panduan">Panduan Peserta</Link><Link href="/#tentang">Tentang Kami</Link></div></div><div><h3 className="mb-4 font-sans text-sm font-bold uppercase tracking-wider">Hubungi Kami</h3><div className="space-y-2 text-sm text-white/70"><p>Graha Barokah, Jl. Cisaat Sukamanah, Kab. Sukabumi 43152</p><p>0859-3000-5544 / 0857-3122-2878</p><p>adminbarokahtour@gmail.com</p></div></div></div><div className="container-wide mt-10 border-t border-white/15 pt-5 text-xs text-white/50">© {new Date().getFullYear()} PT. Bina Barokah Sejahtera. Semua hak dilindungi.</div></footer>}
+export function Footer(){return <footer id="kontak" className="bg-[#163d78] py-12 text-white"><div className="container-wide grid gap-10 md:grid-cols-[1.4fr_1fr_1.2fr]"><div><Logo light/><p className="mt-5 max-w-xs text-sm leading-relaxed text-white/70">Mitra perjalanan terpercaya dari Sukabumi untuk menjelajah Indonesia bersama keluarga, sekolah, dan perusahaan.</p><div className="mt-5 flex items-center gap-3">{SOCMED.map((s) => (<a key={s.name} href={s.href} aria-label={s.label} className="group flex h-9 w-9 items-center justify-center transition-transform duration-300 hover:-translate-y-0.5"><SocialIcon name={s.name} /></a>))}</div></div><div><h3 className="mb-4 font-sans text-sm font-bold uppercase tracking-wider">Tautan Cepat</h3><div className="flex flex-col gap-3 text-sm text-white/70"><Link href="/#event">Event Wisata</Link><Link href="/login">Masuk Panel</Link><Link href="/panduan">Panduan Peserta</Link><Link href="/#tentang">Tentang Kami</Link></div></div><div><h3 className="mb-4 font-sans text-sm font-bold uppercase tracking-wider">Hubungi Kami</h3><div className="space-y-2 text-sm text-white/70"><p>Graha Barokah, Jl. Cisaat Sukamanah, Kab. Sukabumi 43152</p><p>0859-3000-5544 / 0857-3122-2878</p><p>adminbarokahtour@gmail.com</p></div></div></div><div className="container-wide mt-10 border-t border-white/15 pt-5 text-xs text-white/50">© {new Date().getFullYear()} PT. Bina Barokah Sejahtera. Semua hak dilindungi.</div></footer>}
 
 export function BookingBar({ price = 'Rp 425.000' }: { price?: string }) {
   const [hidden, setHidden] = useState(false)
