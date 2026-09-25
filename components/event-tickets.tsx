@@ -65,6 +65,7 @@ type EventTicketsProps = {
   eventDate: string
   eventLocation: string | null
   note: string | null
+  imageUrl?: string | null
   busCount: number
   total: number
   attended: number
@@ -79,6 +80,7 @@ export function EventTickets({
   eventDate,
   eventLocation,
   note,
+  imageUrl,
   busCount,
   total,
   attended,
@@ -171,23 +173,34 @@ export function EventTickets({
       </div>
 
       <div className="mt-4 overflow-hidden rounded-2xl border border-[#dfe4e8] bg-white shadow-lg">
-        <div className="bg-gradient-to-br from-[#1b4f9c] to-[#163d78] px-6 py-6 text-white">
-          <p className="text-xs font-bold uppercase tracking-wider text-white/60">
-            Event Wisata · Barokah Tour &amp; Travel
-          </p>
-          <h1 className="mt-1 text-2xl font-bold leading-tight">{eventTitle}</h1>
-          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-white/85">
-            <span className="flex items-center gap-1.5">
-              <CalendarDays size={14} /> {formatTanggalPendek(new Date(eventDate))}
-            </span>
-            {eventLocation && (
+        <div
+          className={`relative ${imageUrl ? 'bg-cover bg-center' : 'bg-gradient-to-br from-[#1b4f9c] to-[#163d78]'}`}
+          style={imageUrl ? { backgroundImage: `url('${imageUrl}')` } : undefined}
+        >
+          {imageUrl && (
+            <div
+              aria-hidden
+              className="absolute inset-0 bg-gradient-to-t from-[#1b4f9c]/20 via-[#123575]/60 to-[#0d2850]/95"
+            />
+          )}
+          <div className="relative px-6 py-8 text-white md:py-10">
+            <p className="text-xs font-bold uppercase tracking-wider text-white/60">
+              Event Wisata · Barokah Tour &amp; Travel
+            </p>
+            <h1 className="mt-1 text-2xl font-bold leading-tight">{eventTitle}</h1>
+            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-white/85">
               <span className="flex items-center gap-1.5">
-                <MapPin size={14} /> {eventLocation}
+                <CalendarDays size={14} /> {formatTanggalPendek(new Date(eventDate))}
               </span>
-            )}
-          </div>
-          <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-[#e6f4ea] px-3 py-1 text-xs font-bold text-[#2ca84a]">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#2ca84a]" /> Aktif
+              {eventLocation && (
+                <span className="flex items-center gap-1.5">
+                  <MapPin size={14} /> {eventLocation}
+                </span>
+              )}
+            </div>
+            <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-[#e6f4ea] px-3 py-1 text-xs font-bold text-[#2ca84a]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#2ca84a]" /> Aktif
+            </div>
           </div>
         </div>
 

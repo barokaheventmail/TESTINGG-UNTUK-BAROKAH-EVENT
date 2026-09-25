@@ -45,15 +45,17 @@ export async function POST(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'Kode event hanya huruf/angka tanpa spasi, maks 20 karakter.' }, { status: 400 })
   }
 
-  // Nomor terakhir yang sudah dipakai untuk prefix ini (global).
-  let maxNum = 0
+  // Nomor yang sedang dipakai untuk prefix ini (global). Generate memakai
+  // angka bebas terkecil, jadi setelah akun dihapus dan digenerate ulang,
+  // penomoran mulai lagi dari 1 (tidak loncat ke angka terakhir).
+  const used = new Set<number>()
   const existing = await prisma.user.findMany({
     where: { username: { startsWith: prefix } },
     select: { username: true },
   })
   for (const u of existing) {
     const tail = u.username.slice(prefix.length)
-    if (/^\d+$/.test(tail)) maxNum = Math.max(maxNum, Number(tail))
+    if (/^\d+$/.test(tail)) used.add(Number(tail))
   }
 
   const plan = event.buses
@@ -61,21 +63,24 @@ export async function POST(request: NextRequest, { params }: Params) {
     .filter((p) => p.needed > 0)
 
   const created: { busName: string; username: string; password: string }[] = []
-  let nextNum = maxNum + 1
+  let nextNum = 1
 
   if (plan.length > 0) {
     await prisma.$transaction(async (tx) => {
       for (const { bus, needed } of plan) {
         for (let i = 0; i < needed; i++) {
           let user: { id: string; username: string } | null = null
-          // Coba dengan nomor berurutan; bila bentrok (P2002), naikkan angka.
+          // Coba dengan nomor bebas terkecil; bila bentrok (P2002), lanjutkan naik.
           for (let attempt = 0; attempt < 50 && !user; attempt++) {
+            while (used.has(nextNum)) nextNum += 1
             const username = prefix + nextNum
             const password = randomPassword()
             const passwordHash = await bcrypt.hash(password, 10)
             try {
               user = await tx.user.create({ data: { username, passwordHash, role: 'CREW' } })
               created.push({ busName: bus.name, username, password })
+              used.add(nextNum)
+              nextNum += 1
             } catch (err) {
               if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
                 nextNum += 1
@@ -85,7 +90,6 @@ export async function POST(request: NextRequest, { params }: Params) {
             }
           }
           if (!user) throw new Error('Gagal membuat username unik.')
-          nextNum += 1
           const order = bus.workers.length + i + 1
           await tx.busWorker.create({ data: { busId: bus.id, userId: user.id, order } })
         }

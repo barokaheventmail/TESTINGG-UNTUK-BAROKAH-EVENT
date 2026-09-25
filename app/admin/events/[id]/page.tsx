@@ -12,6 +12,7 @@ import { AddBus } from '@/components/admin/add-bus'
 import { AddParticipant } from '@/components/admin/add-participant'
 import { BusArmadaSection, type BusWithWorkersData } from '@/components/admin/bus-crew'
 import { GenerateCrewButton, type GenerateBus } from '@/components/admin/generate-crew'
+import { EventImage } from '@/components/admin/event-image'
 import { ResetAttendance } from '@/components/admin/reset-attendance'
 import { ResetCrewPasswordsButton } from '@/components/admin/reset-crew-passwords'
 import { DeleteCrewButton } from '@/components/admin/delete-crew'
@@ -197,6 +198,8 @@ export default async function EventDetail({
       {active === 'ringkasan' && (
         <div className="mt-5 space-y-4">
           {stats}
+
+          <EventImage eventId={event.id} imageUrl={event.imageUrl} />
 
           <div className="rounded-2xl border border-[#dfe4e8] bg-white p-5 shadow-sm">
             <h2 className="text-sm font-bold text-[#1b3555]">Aksi Cepat</h2>
