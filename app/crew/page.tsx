@@ -1,12 +1,8 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { History } from 'lucide-react'
-<<<<<<< HEAD
 import { requireCrewSession } from '@/lib/auth'
-=======
-import { requireUser } from '@/lib/auth'
 import { prisma } from '@/lib/db'
->>>>>>> b52f741 (perubahan terhadap admin panel)
 import { redirect } from 'next/navigation'
 import { CrewScanner } from '@/components/crew/scanner'
 import { LogoutButton } from '@/components/admin/logout-button'

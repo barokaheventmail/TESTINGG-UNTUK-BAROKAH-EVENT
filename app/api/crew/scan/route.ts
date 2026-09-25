@@ -75,9 +75,9 @@ export async function POST(request: NextRequest) {
       p = await prisma.participant.findUnique({
         where: { token: matches[0].token },
         include: {
-          bus: { select: { name: true } },
+          bus: { select: { id: true, name: true } },
           event: { select: { id: true, title: true, date: true, status: true } },
-          scannedBy: { select: { username: true } },
+          scannedBy: { select: { username: true, name: true } },
         },
       })
     }

@@ -119,6 +119,10 @@ export async function requireAdminSession(): Promise<Session | null> {
   return getSession('ADMIN')
 }
 
+export async function requireUser(): Promise<Session | null> {
+  return loadSession((await getSessionToken()) ?? undefined)
+}
+
 export async function requireCrewSession(): Promise<Session | null> {
   const store = await cookies()
   const crewToken = store.get(SESSION_COOKIE_NAMES.CREW)?.value
