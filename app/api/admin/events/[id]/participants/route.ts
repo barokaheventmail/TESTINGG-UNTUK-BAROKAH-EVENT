@@ -54,7 +54,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     prisma.participant.findMany({
       where,
       orderBy: [{ busId: 'asc' }, { order: 'asc' }],
-      include: { scannedBy: { select: { username: true } } },
+      include: { scannedBy: { select: { username: true, name: true } } },
       take,
       skip,
     }),

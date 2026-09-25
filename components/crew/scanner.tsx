@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode'
-import { BadgeCheck, Camera, CheckCircle2, Keyboard, Loader2, ScanBarcode, XCircle } from 'lucide-react'
+import { BadgeCheck, Camera, CheckCircle2, Keyboard, Loader2, ScanBarcode, ShieldAlert, XCircle } from 'lucide-react'
 import { decodeToken } from '@/lib/scan'
 
 type ScanResult = {
@@ -22,6 +22,18 @@ type ScanResult = {
   }
 }
 
+type ScanBlock =
+  | {
+      code: 'WRONG_BUS'
+      error: string
+      participant: { name: string; busName: string; eventTitle: string }
+      assignments: { busName: string; eventTitle: string }[]
+    }
+  | {
+      code: 'NO_ASSIGNMENT'
+      error: string
+    }
+
 const SCANNER_ID = 'crew-qr-reader'
 
 export function CrewScanner({ username }: { username: string }) {
@@ -30,6 +42,7 @@ export function CrewScanner({ username }: { username: string }) {
   const [starting, setStarting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<ScanResult | null>(null)
+  const [block, setBlock] = useState<ScanBlock | null>(null)
   const [manualMode, setManualMode] = useState(false)
   const [manualToken, setManualToken] = useState('')
   const [busy, setBusy] = useState(false)
@@ -66,6 +79,10 @@ export function CrewScanner({ username }: { username: string }) {
       })
       const data = await res.json()
       if (!res.ok) {
+        if (data?.code === 'WRONG_BUS' || data?.code === 'NO_ASSIGNMENT') {
+          setBlock(data as ScanBlock)
+          return
+        }
         throw new Error(typeof data.error === 'string' ? data.error : 'Terjadi kesalahan.')
       }
       setResult(data as ScanResult)
@@ -121,6 +138,13 @@ export function CrewScanner({ username }: { username: string }) {
     setError(null)
     if (manualMode) return
     startCamera()
+  }
+
+  function dismissBlock(rescan: boolean) {
+    setBlock(null)
+    setError(null)
+    setResult(null)
+    if (rescan) startCamera()
   }
 
   async function submitManual(e: React.FormEvent) {
@@ -259,7 +283,7 @@ export function CrewScanner({ username }: { username: string }) {
             <div className="rounded-xl bg-[#f8fafc] p-3">
               <dt className="text-[11px] font-semibold uppercase tracking-wide text-[#9aa3af]">Kursi</dt>
               <dd className="mt-0.5 font-semibold text-[#1b3555]">
-                {result.participant.seat ?? result.participant.order}
+                {result.participant.seat ?? '—'}
               </dd>
             </div>
             <div className="col-span-2 rounded-xl bg-[#f8fafc] p-3">
@@ -282,6 +306,73 @@ export function CrewScanner({ username }: { username: string }) {
       <p className="px-4 text-center text-[11px] text-white/50">
         Valid scan otomatis menandai kehadiran peserta di panel admin.
       </p>
+
+      {/* Popup scan ditolak (bukan armada / belum ditugaskan) */}
+      {block && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-5 backdrop-blur-sm">
+          <div className="animate-fade-up w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="flex items-start gap-3">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600">
+                <ShieldAlert size={22} />
+              </span>
+              <div>
+                <h3 className="text-sm font-black text-[#8b1e1e]">
+                  {block.code === 'WRONG_BUS' ? 'Bukan Armada Kamu' : 'Belum Ada Tugas'}
+                </h3>
+                <p className="mt-1 text-xs font-semibold text-[#657080]">
+                  {block.code === 'WRONG_BUS'
+                    ? 'Scan ditolak. Peserta ini tidak tercatat di armada yang kamu pegang.'
+                    : block.error}
+                </p>
+              </div>
+            </div>
+
+            {block.code === 'WRONG_BUS' && (
+              <div className="mt-4 space-y-2 rounded-2xl bg-[#f8fafc] p-4">
+                <div className="rounded-xl border-l-4 border-red-400 bg-red-50 px-3 py-2">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-[#9aa3af]">Peserta ini di</p>
+                  <p className="text-sm font-bold text-[#1b3555]">
+                    Armada {block.participant.busName}
+                    <span className="font-semibold text-[#657080]"> · {block.participant.eventTitle}</span>
+                  </p>
+                  <p className="mt-0.5 text-xs font-semibold text-[#657080]">{block.participant.name}</p>
+                </div>
+                <div className="rounded-xl px-3 py-2">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-[#9aa3af]">Armada yang kamu pegang</p>
+                  {block.assignments.map((a, i) => (
+                    <p key={i} className="text-xs font-bold text-[#2ca84a]">
+                      • {a.busName} · {a.eventTitle}
+                    </p>
+                  ))}
+                </div>
+                <p className="rounded-xl bg-[#eef3fb] px-3 py-2 text-xs font-semibold text-[#1b4f9c]">
+                  Arahkan peserta ke armada <span className="font-bold">{block.participant.busName}</span> sesuai dengan
+                  kursi yang tertera di tiketnya.
+                </p>
+              </div>
+            )}
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => dismissBlock(false)}
+                className="rounded-full border border-[#dfe4e8] px-4 py-2 text-xs font-bold text-[#657080] transition-colors hover:bg-[#f1f3f5]"
+              >
+                Tutup
+              </button>
+              {block.code === 'WRONG_BUS' && (
+                <button
+                  type="button"
+                  onClick={() => dismissBlock(true)}
+                  className="rounded-full bg-[#1b4f9c] px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-[#143d79] active:scale-95"
+                >
+                  <ScanBarcode size={13} className="inline" /> Scan Berikutnya
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

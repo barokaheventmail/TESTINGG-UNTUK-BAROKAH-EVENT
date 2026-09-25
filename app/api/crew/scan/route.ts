@@ -4,6 +4,31 @@ import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
 import { decodeToken } from '@/lib/scan'
 
+async function logScanReject(
+  args: {
+    userId: string
+    username: string
+    eventId: string
+    participantName: string
+    action: string
+    detail: Record<string, unknown>
+  },
+) {
+  try {
+    await prisma.activityLog.create({
+      data: {
+        eventId: args.eventId,
+        userId: args.userId,
+        action: args.action,
+        detail: { name: args.participantName, ...args.detail },
+      },
+    })
+    logger.info(args.action, { by: args.username, participant: args.participantName, eventId: args.eventId })
+  } catch (e) {
+    logger.error('log scan reject failed', { error: e instanceof Error ? e.message : 'unknown' })
+  }
+}
+
 export async function POST(request: NextRequest) {
   const session = await requireCrewSession()
   if (!session || (session.role !== 'CREW' && session.role !== 'ADMIN')) {
@@ -26,9 +51,9 @@ export async function POST(request: NextRequest) {
   let p = await prisma.participant.findUnique({
     where: { token },
     include: {
-      bus: { select: { name: true } },
+      bus: { select: { id: true, name: true } },
       event: { select: { id: true, title: true, date: true, status: true } },
-      scannedBy: { select: { username: true } },
+      scannedBy: { select: { username: true, name: true } },
     },
   })
 
@@ -71,8 +96,56 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Event tidak aktif.' }, { status: 409 })
   }
 
+  // Pembatasan armada: crew hanya boleh scan peserta di armada yang ditugaskan kepadanya.
+  if (session.role === 'CREW') {
+    const assignments = await prisma.busWorker.findMany({
+      where: { userId: session.sub },
+      select: {
+        busId: true,
+        bus: { select: { name: true, event: { select: { title: true } } } },
+      },
+    })
+
+    if (assignments.length === 0) {
+      await logScanReject({
+        userId: session.sub,
+        username: session.username,
+        eventId: p.event.id,
+        participantName: p.name,
+        action: 'scan.noAssignment',
+        detail: {},
+      })
+      return NextResponse.json(
+        { error: 'Kamu belum ditugaskan ke armada mana pun. Hubungi admin untuk ditugaskan dahulu.', code: 'NO_ASSIGNMENT' },
+        { status: 403 },
+      )
+    }
+
+    if (!assignments.some((a) => a.busId === p.busId)) {
+      const participantInfo = { name: p.name, busName: p.bus.name, eventTitle: p.event.title }
+      const assignmentInfo = assignments.map((a) => ({ busName: a.bus.name, eventTitle: a.bus.event.title }))
+      await logScanReject({
+        userId: session.sub,
+        username: session.username,
+        eventId: p.event.id,
+        participantName: p.name,
+        action: 'scan.wrongBus',
+        detail: { busId: p.busId, busName: p.bus.name, assignments: assignmentInfo },
+      })
+      return NextResponse.json(
+        {
+          error: 'Bukan armada kamu.',
+          code: 'WRONG_BUS',
+          participant: participantInfo,
+          assignments: assignmentInfo,
+        },
+        { status: 403 },
+      )
+    }
+  }
+
   // Atomic: hanya satu crew yang bisa menandai peserta ini pertama kali.
-  let outcome: { firstScan: boolean; fresh: { scannedAt: Date | null; scannedBy: { username: string } | null } | null }
+  let outcome: { firstScan: boolean; fresh: { scannedAt: Date | null; scannedBy: { username: string; name: string | null } | null } | null }
 
   try {
     outcome = await prisma.$transaction(async (tx) => {
@@ -94,7 +167,7 @@ export async function POST(request: NextRequest) {
 
       const fresh = await tx.participant.findUnique({
         where: { id: p.id },
-        select: { scannedAt: true, scannedBy: { select: { username: true } } },
+        select: { scannedAt: true, scannedBy: { select: { username: true, name: true } } },
       })
       return { firstScan, fresh }
     })
@@ -115,7 +188,7 @@ export async function POST(request: NextRequest) {
     firstScan,
     alreadyAttended: !firstScan,
     attendedAt: fresh?.scannedAt?.toISOString() ?? null,
-    scannedBy: fresh?.scannedBy?.username ?? null,
+    scannedBy: fresh?.scannedBy ? fresh.scannedBy.name ?? fresh.scannedBy.username : null,
     participant: {
       name: p.name,
       order: p.order,

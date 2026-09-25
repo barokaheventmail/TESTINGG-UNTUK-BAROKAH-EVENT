@@ -23,7 +23,10 @@ export default async function EventQR({
   const event = await prisma.event.findUnique({
     where: { id },
     include: {
-      buses: { orderBy: { order: 'asc' } },
+      buses: {
+        orderBy: { order: 'asc' },
+        include: { workers: { orderBy: { order: 'asc' }, include: { user: { select: { username: true, name: true } } } } },
+      },
       participants: {
         orderBy: [{ busId: 'asc' }, { order: 'asc' }],
         include: { bus: { select: { id: true, name: true } } },
@@ -94,8 +97,8 @@ export default async function EventQR({
         <div className="mt-8 rounded-2xl border border-dashed border-[#bfd3c4] bg-white p-10 text-center print:hidden">
           <p className="text-sm font-bold text-[#1b3555]">Pilih bus untuk mencetak QR</p>
           <p className="mt-1 text-xs text-[#657080]">
-            Klik satu atau lebih nama bus di atas, lalu tekan Cetak. Ini mencegah halaman memuat ribuan QR sekaligus dan
-            menjaga browser tetap ringan.
+            Pilih bus di atas lalu tekan Cetak. Ini mencegah halaman memuat ribuan QR sekaligus dan menjaga browser tetap
+            ringan.
           </p>
         </div>
       ) : selectedIds.length === 0 ? (
@@ -120,6 +123,11 @@ export default async function EventQR({
                       No.{p.order} · {p.seat ? `Kursi ${p.seat} · ` : ''}
                       {p.vw ? `VW ${p.vw}` : ''}
                     </p>
+                    {bus.workers.length > 0 && (
+                      <p className="mt-0.5 truncate text-[10px] font-bold text-[#1b4f9c]">
+                        Crew: {bus.workers.map((w) => w.user.name ?? w.user.username).join(', ')}
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>

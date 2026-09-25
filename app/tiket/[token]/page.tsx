@@ -5,6 +5,7 @@ import { BadgeCheck, Bus, Clock3, DoorOpen, MapPin } from 'lucide-react'
 import { prisma } from '@/lib/db'
 import { qrDataUrl, encodeToken } from '@/lib/scan'
 import { formatTanggalPendek } from '@/lib/dates'
+import { AutoRefresh } from '@/components/admin/auto-refresh'
 import { PrintButton } from '@/components/admin/print-button'
 
 export const metadata: Metadata = { title: 'Tiket Peserta – Barokah Tour and Travel', robots: { index: false } }
@@ -15,9 +16,9 @@ export default async function TicketPage({ params }: { params: Promise<{ token: 
   const p = await prisma.participant.findUnique({
     where: { token },
     include: {
-      bus: true,
+      bus: { include: { workers: { orderBy: { order: 'asc' }, include: { user: { select: { username: true, name: true } } } } } },
       event: true,
-      scannedBy: { select: { username: true } },
+      scannedBy: { select: { username: true, name: true } },
     },
   })
 
@@ -29,6 +30,7 @@ export default async function TicketPage({ params }: { params: Promise<{ token: 
 
   return (
     <main className="min-h-screen bg-[#f4f7fa] px-4 py-8">
+      <AutoRefresh />
       <div className="mx-auto w-full max-w-md">
         <div className="mb-4 flex justify-center print:hidden">
           <PrintButton />
@@ -83,9 +85,17 @@ export default async function TicketPage({ params }: { params: Promise<{ token: 
               <div>
                 <dt className="text-xs text-[#657080]">Kursi</dt>
                 <dd className="mt-0.5 flex items-center gap-1 font-semibold text-[#1b3555]">
-                  <DoorOpen size={13} /> {p.seat || p.order}
+                  <DoorOpen size={13} /> {p.seat || '—'}
                 </dd>
               </div>
+              {p.bus.workers.length > 0 && (
+                <div className="col-span-2">
+                  <dt className="text-xs text-[#657080]">Crew Bertugas</dt>
+                  <dd className="mt-0.5 text-xs font-semibold text-[#1b3555]">
+                    {p.bus.workers.map((w) => w.user.name ?? w.user.username).join(' · ')}
+                  </dd>
+                </div>
+              )}
               {p.room && (
                 <div>
                   <dt className="text-xs text-[#657080]">Kamar</dt>

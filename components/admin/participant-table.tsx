@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { BadgeCheck, Loader2, RefreshCcw, Search, SearchX } from 'lucide-react'
+import { BadgeCheck, Bus, Loader2, RefreshCcw, Search, SearchX } from 'lucide-react'
 import { formatTanggalPendek } from '@/lib/dates'
 import { PARTICIPANTS_CHANGED_EVENT } from '@/lib/events'
 import { EditParticipant } from './edit-participant'
@@ -19,7 +19,7 @@ export type RowParticipant = {
   room: string | null
   vw: string | null
   scannedAt: string | null
-  scannedBy: { username: string } | null
+  scannedBy: { username: string; name: string | null } | null
 }
 
 export type RowBus = {
@@ -132,6 +132,17 @@ export function ParticipantTable({
       .filter((g) => g.items.length > 0)
   }, [items, buses, busFilter])
 
+  const hasAny = useMemo(
+    () => ({
+      ttl: items.some((p) => p.birthDate || p.birthPlace),
+      phone: items.some((p) => p.phone),
+      seat: items.some((p) => p.seat),
+      room: items.some((p) => p.room),
+      vw: items.some((p) => p.vw),
+    }),
+    [items],
+  )
+
   const statusBtn = (value: StatusFilter, label: string) => (
     <button
       type="button"
@@ -169,30 +180,22 @@ export function ParticipantTable({
       </div>
 
       <div className="flex flex-wrap items-center gap-2 border-b border-[#dfe4e8] px-5 py-3">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => setBusFilter('all')}
-            className={`rounded-full px-3 py-1.5 text-xs font-bold transition-colors duration-200 ${
-              busFilter === 'all' ? 'bg-[#1b3555] text-white' : 'border border-[#dfe4e8] text-[#657080] hover:bg-[#f1f3f5]'
-            }`}
+        <label className="flex items-center gap-2 rounded-full border border-[#dfe4e8] bg-[#f8fafc] px-3 py-2">
+          <Bus size={14} className="shrink-0 text-[#9aa3af]" />
+          <select
+            value={busFilter}
+            onChange={(e) => setBusFilter(e.target.value)}
+            aria-label="Filter bus peserta"
+            className="max-w-[220px] bg-transparent text-xs font-bold text-[#1b3555] outline-none"
           >
-            Semua Bus
-          </button>
-          {buses.map((bus) => (
-            <button
-              type="button"
-              key={bus.id}
-              onClick={() => setBusFilter(bus.id)}
-              className={`flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-bold transition-colors duration-200 ${
-                busFilter === bus.id ? 'bg-[#1b4f9c] text-white' : 'border border-[#dfe4e8] text-[#657080] hover:bg-[#f1f3f5]'
-              }`}
-            >
-              {bus.name}
-              <span className={busFilter === bus.id ? 'text-[#cfe0ff]' : 'text-[#9aa3af]'}>{bus.count}</span>
-            </button>
-          ))}
-        </div>
+            <option value="all">Semua Bus ({totalParticipants})</option>
+            {buses.map((bus) => (
+              <option key={bus.id} value={bus.id}>
+                {bus.name} ({bus.count})
+              </option>
+            ))}
+          </select>
+        </label>
         <div className="ml-auto flex items-center gap-1.5">{statusBtn('all', 'Semua')}{statusBtn('attended', 'Hadir')}{statusBtn('pending', 'Belum')}</div>
       </div>
 
@@ -239,16 +242,16 @@ export function ParticipantTable({
                 )}
               </div>
               <div className="overflow-x-auto rounded-xl border border-[#dfe4e8]">
-                <table className="w-full min-w-[720px] text-left text-xs">
+                <table className="w-full min-w-[560px] text-left text-xs">
                   <thead>
                     <tr className="bg-[#f8fafc] text-[11px] font-bold uppercase tracking-wide text-[#9aa3af]">
                       <th className="px-3 py-2.5">No</th>
                       <th className="px-3 py-2.5">Nama Lengkap</th>
-                      <th className="px-3 py-2.5">TTL</th>
-                      <th className="px-3 py-2.5">Telp/HP</th>
-                      <th className="px-3 py-2.5">Kursi</th>
-                      <th className="px-3 py-2.5">Kamar</th>
-                      <th className="px-3 py-2.5">VW</th>
+                      {hasAny.ttl && <th className="px-3 py-2.5">TTL</th>}
+                      {hasAny.phone && <th className="px-3 py-2.5">Telp/HP</th>}
+                      {hasAny.seat && <th className="px-3 py-2.5">Kursi</th>}
+                      {hasAny.room && <th className="px-3 py-2.5">Kamar</th>}
+                      {hasAny.vw && <th className="px-3 py-2.5">VW</th>}
                       <th className="px-3 py-2.5">Kehadiran</th>
                       <th className="px-3 py-2.5 text-right">Aksi</th>
                     </tr>
@@ -258,20 +261,22 @@ export function ParticipantTable({
                       <tr key={p.id} className={p.scannedAt ? 'bg-[#f6fbf8]' : 'bg-white'}>
                         <td className="px-3 py-2.5 font-bold text-[#9aa3af]">{p.order}</td>
                         <td className="px-3 py-2.5 font-bold text-[#1b3555]">{p.name}</td>
-                        <td className="px-3 py-2.5 text-[#657080]">
-                          {p.birthDate
-                            ? `${formatTanggalPendek(new Date(p.birthDate))}${p.birthPlace ? ` · ${p.birthPlace}` : ''}`
-                            : p.birthPlace || '—'}
-                        </td>
-                        <td className="px-3 py-2.5 text-[#657080]">{p.phone || '—'}</td>
-                        <td className="px-3 py-2.5 text-[#657080]">{p.seat || '—'}</td>
-                        <td className="px-3 py-2.5 text-[#657080]">{p.room || '—'}</td>
-                        <td className="px-3 py-2.5 text-[#657080]">{p.vw || '—'}</td>
+                        {hasAny.ttl && (
+                          <td className="px-3 py-2.5 text-[#657080]">
+                            {p.birthDate
+                              ? `${formatTanggalPendek(new Date(p.birthDate))}${p.birthPlace ? ` · ${p.birthPlace}` : ''}`
+                              : p.birthPlace || '—'}
+                          </td>
+                        )}
+                        {hasAny.phone && <td className="px-3 py-2.5 text-[#657080]">{p.phone || '—'}</td>}
+                        {hasAny.seat && <td className="px-3 py-2.5 text-[#657080]">{p.seat || '—'}</td>}
+                        {hasAny.room && <td className="px-3 py-2.5 text-[#657080]">{p.room || '—'}</td>}
+                        {hasAny.vw && <td className="px-3 py-2.5 text-[#657080]">{p.vw || '—'}</td>}
                         <td className="px-3 py-2.5">
                           {p.scannedAt ? (
                             <div className="inline-flex items-center gap-1 rounded-full bg-[#e6f4ea] px-2.5 py-1 text-[11px] font-bold text-[#2ca84a]">
                               <BadgeCheck size={12} />
-                              Hadir {p.scannedBy ? ` · ${p.scannedBy.username}` : ''}
+                              Hadir {p.scannedBy ? ` · ${p.scannedBy.name ?? p.scannedBy.username}` : ''}
                             </div>
                           ) : (
                             <span className="rounded-full bg-[#fff7e0] px-2.5 py-1 text-[11px] font-bold text-[#b98a12]">

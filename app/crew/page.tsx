@@ -1,7 +1,12 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { History } from 'lucide-react'
+<<<<<<< HEAD
 import { requireCrewSession } from '@/lib/auth'
+=======
+import { requireUser } from '@/lib/auth'
+import { prisma } from '@/lib/db'
+>>>>>>> b52f741 (perubahan terhadap admin panel)
 import { redirect } from 'next/navigation'
 import { CrewScanner } from '@/components/crew/scanner'
 import { LogoutButton } from '@/components/admin/logout-button'
@@ -11,6 +16,17 @@ export const metadata: Metadata = { title: 'Scan QR Peserta – Barokah Tour', r
 export default async function CrewPage() {
   const session = await requireCrewSession()
   if (!session) redirect('/login?scope=CREW&next=/crew')
+
+  const [user, assigned] = await Promise.all([
+    prisma.user.findUnique({ where: { id: session.sub }, select: { name: true } }),
+    prisma.busWorker.findMany({
+      where: { userId: session.sub },
+      orderBy: { createdAt: 'asc' },
+      include: { bus: { select: { id: true, name: true, eventId: true, event: { select: { title: true, status: true } } } } },
+    }),
+  ])
+
+  const activeAssignments = assigned.filter((a) => a.bus.event.status === 'ACTIVE')
 
   return (
     <main className="min-h-screen bg-[#0f2a52] pb-16">
@@ -30,10 +46,23 @@ export default async function CrewPage() {
             <LogoutButton variant="dark" scope="CREW" />
           </div>
         </div>
-        <p className="mt-1 text-xs text-white/60">Crew: {session.username}</p>
+        <p className="mt-1 text-xs text-white/60">Crew: {user?.name ?? session.username}</p>
+        {activeAssignments.length > 0 && (
+          <p className="mx-auto mt-1 max-w-md text-[11px] text-white/60">
+            Ditugaskan di{' '}
+            {activeAssignments.map((a, i) => (
+              <span key={a.bus.id}>
+                {i > 0 && ' · '}
+                <span className="font-bold text-white">
+                  {a.bus.event.title} ({a.bus.name})
+                </span>
+              </span>
+            ))}
+          </p>
+        )}
       </header>
       <div className="mx-auto mt-5 w-full max-w-md px-4">
-        <CrewScanner username={session.username} />
+        <CrewScanner username={user?.name ?? session.username} />
       </div>
     </main>
   )
