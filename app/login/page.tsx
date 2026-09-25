@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { AlertTriangle, Loader2, LogIn, LogOut, ShieldCheck } from 'lucide-react'
+import { Loader2, LogIn, ShieldCheck } from 'lucide-react'
+
+type LoginSession = { sub: string; username: string; role: 'ADMIN' | 'CREW'; slot: 'ADMIN' | 'CREW' }
 
 function resolveDest(next: string | null, role: string): string {
   const target = role === 'ADMIN' ? '/admin' : '/crew'
@@ -17,6 +19,13 @@ function isAllowedNext(next: string | null, role: string): boolean {
   return role === 'ADMIN' || !next.startsWith('/admin')
 }
 
+function roleFromNext(next: string | null): LoginSession['role'] | null {
+  if (!next) return null
+  if (next.startsWith('/admin')) return 'ADMIN'
+  if (next.startsWith('/crew')) return 'CREW'
+  return null
+}
+
 export default function LoginPage() {
   const router = useRouter()
   const [username, setUsername] = useState('')
@@ -25,7 +34,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [next, setNext] = useState<string | null>(null)
   const [checking, setChecking] = useState(true)
-  const [sessionInfo, setSessionInfo] = useState<{ role: string; target: string } | null>(null)
+  const [sessions, setSessions] = useState<LoginSession[]>([])
 
   const redirectAfterLogin = useCallback(
     (role: string) => {
@@ -37,32 +46,26 @@ export default function LoginPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
-    setNext(params.get('next'))
+    const requestedNext = params.get('next')
+    const scopeParam = params.get('scope')?.toUpperCase()
+    const requestedRole: LoginSession['role'] | null =
+      scopeParam === 'ADMIN' || scopeParam === 'CREW' ? scopeParam : roleFromNext(requestedNext)
+    setNext(requestedNext)
     fetch('/api/auth/me')
       .then(async (r) => {
         if (!r.ok) return
-        const { user } = await r.json()
-        const role: string = user?.role ?? 'CREW'
-        const requested = params.get('next')
-        if (requested && !isAllowedNext(requested, role)) {
-          setSessionInfo({ role, target: requested })
-          return
-        }
-        redirectAfterLogin(role)
+        const data = await r.json()
+        const activeSessions: LoginSession[] = (data.sessions ?? (data.user ? [data.user] : [])) as LoginSession[]
+        setSessions(activeSessions)
+        if (params.get('switch') === '1' || !requestedRole) return
+        const active = activeSessions.find((session) => session.role === requestedRole)
+        if (!active) return
+        if (requestedNext && !isAllowedNext(requestedNext, active.role)) return
+        router.replace(resolveDest(requestedNext, active.role))
+        router.refresh()
       })
       .finally(() => setChecking(false))
-  }, [redirectAfterLogin])
-
-  async function logout() {
-    setLoading(true)
-    setError(null)
-    try {
-      await fetch('/api/auth/logout', { method: 'POST' })
-      setSessionInfo(null)
-    } finally {
-      setLoading(false)
-    }
-  }
+  }, [router])
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -99,24 +102,25 @@ export default function LoginPage() {
             <p className="mt-1 text-sm text-[#657080]">Masuk untuk Admin & Crew</p>
           </div>
 
-          {sessionInfo && (
-            <div className="mt-5 rounded-xl border border-[#ffe3a3] bg-[#fff7e0] p-4 text-xs">
-              <p className="flex items-center gap-2 font-bold text-[#b98a12]">
-                <AlertTriangle size={15} className="shrink-0" />
-                Anda sudah masuk sebagai <span className="uppercase">{sessionInfo.role}</span>
+          {sessions.length > 0 && (
+            <div className="mt-5 rounded-xl border border-[#dce8e1] bg-[#f4faf6] p-4 text-xs">
+              <p className="flex items-center gap-2 font-bold text-[#2ca84a]">
+                <ShieldCheck size={15} className="shrink-0" />
+                Sesi login aktif
               </p>
-              <p className="mt-1 leading-relaxed text-[#8a6d1f]">
-                Akun ini tidak punya akses ke <strong>{sessionInfo.target}</strong>. Keluar dulu atau masuk dengan akun
-                yang sesuai.
+              <p className="mt-1 leading-relaxed text-[#657080]">
+                Admin &amp; Crew bisa login bersamaan. Login akun lain tidak akan mengeluarkan sesi yang sudah aktif.
               </p>
-              <button
-                type="button"
-                onClick={logout}
-                disabled={loading}
-                className="mt-2.5 flex items-center gap-1.5 rounded-full bg-[#b98a12] px-4 py-2 font-bold text-white transition-colors duration-200 hover:bg-[#a07910] active:scale-95 disabled:opacity-60"
-              >
-                <LogOut size={13} /> {loading ? '…' : 'Keluar & ganti akun'}
-              </button>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {sessions.map((session) => (
+                  <span
+                    key={session.sub}
+                    className="rounded-full border border-[#dce8e1] bg-white px-3 py-1.5 font-bold text-[#1b4f9c]"
+                  >
+                    {session.role} · {session.username}
+                  </span>
+                ))}
+              </div>
             </div>
           )}
 

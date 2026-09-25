@@ -1,9 +1,13 @@
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { History, LayoutDashboard, QrCode } from 'lucide-react'
 import { AutoRefresh } from '@/components/admin/auto-refresh'
 import { LogoutButton } from '@/components/admin/logout-button'
+import { requireAdminSession } from '@/lib/auth'
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  const session = await requireAdminSession()
+  if (!session) redirect('/login?scope=ADMIN&next=/admin')
   return (
     <div className="min-h-screen bg-[#f4f7fa]">
       <AutoRefresh />

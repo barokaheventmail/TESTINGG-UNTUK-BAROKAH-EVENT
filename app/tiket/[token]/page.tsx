@@ -25,7 +25,7 @@ export default async function TicketPage({ params }: { params: Promise<{ token: 
 
   const qr = await qrDataUrl(encodeToken(p.token), 420)
   const attended = p.scannedAt !== null
-  const noTicket = `BTH-${String(p.event.date.getFullYear() % 100).padStart(2, '0')}-${p.token.slice(-5).toUpperCase()}`
+  const noTicket = p.ticketCode
 
   return (
     <main className="min-h-screen bg-[#f4f7fa] px-4 py-8">

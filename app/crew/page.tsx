@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { History } from 'lucide-react'
-import { requireUser } from '@/lib/auth'
+import { requireCrewSession } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { CrewScanner } from '@/components/crew/scanner'
 import { LogoutButton } from '@/components/admin/logout-button'
@@ -9,8 +9,8 @@ import { LogoutButton } from '@/components/admin/logout-button'
 export const metadata: Metadata = { title: 'Scan QR Peserta – Barokah Tour', robots: { index: false } }
 
 export default async function CrewPage() {
-  const session = await requireUser()
-  if (!session) redirect('/login?next=/crew')
+  const session = await requireCrewSession()
+  if (!session) redirect('/login?scope=CREW&next=/crew')
 
   return (
     <main className="min-h-screen bg-[#0f2a52] pb-16">
@@ -27,7 +27,7 @@ export default async function CrewPage() {
             >
               <History size={13} /> Riwayat
             </Link>
-            <LogoutButton variant="dark" />
+            <LogoutButton variant="dark" scope="CREW" />
           </div>
         </div>
         <p className="mt-1 text-xs text-white/60">Crew: {session.username}</p>

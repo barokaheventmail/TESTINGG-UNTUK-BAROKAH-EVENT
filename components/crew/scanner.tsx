@@ -55,7 +55,7 @@ export function CrewScanner({ username }: { username: string }) {
     processScan(token)
   }
 
-  async function processScan(token: string) {
+  async function processScan(token: string, clearInput?: () => void) {
     setBusy(true)
     setError(null)
     try {
@@ -69,6 +69,7 @@ export function CrewScanner({ username }: { username: string }) {
         throw new Error(typeof data.error === 'string' ? data.error : 'Terjadi kesalahan.')
       }
       setResult(data as ScanResult)
+      clearInput?.()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Terjadi kesalahan.')
     } finally {
@@ -118,19 +119,20 @@ export function CrewScanner({ username }: { username: string }) {
   function scanAgain() {
     setResult(null)
     setError(null)
+    if (manualMode) return
     startCamera()
   }
 
   async function submitManual(e: React.FormEvent) {
     e.preventDefault()
-    if (!manualToken.trim()) return
-    const token = decodeToken(manualToken.trim())
+    const value = manualToken.trim()
+    if (!value) return
+    const token = decodeToken(value)
     if (!token) {
-      setError('Token tidak valid.')
+      setError('Input tidak valid. Cek token atau No. Tiket yang dimasukkan.')
       return
     }
-    setManualToken('')
-    processScan(token)
+    processScan(token, () => setManualToken(''))
   }
 
   return (
@@ -176,7 +178,7 @@ export function CrewScanner({ username }: { username: string }) {
             <input
               value={manualToken}
               onChange={(e) => setManualToken(e.target.value)}
-              placeholder="Tempel token QR (BTHT:…) atau tautan tiket (barokah.travel/tiket/…)"
+              placeholder="Tempel QR (BTHT:…), No. Tiket (BTH-26-XXXXX), atau tautan tiket (…/tiket/…)"
               className="w-full rounded-xl border border-[#dfe4e8] bg-[#f8fafc] px-4 py-3 text-sm font-semibold text-[#1b3555] outline-none placeholder:text-[#9aa3af] focus:border-[#1b4f9c] focus:bg-white focus:ring-2 focus:ring-[#1b4f9c]/15"
             />
             <button

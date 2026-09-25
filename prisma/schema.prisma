@@ -75,6 +75,7 @@ model Participant {
   room           String?
   vw             String?
   token          String    @unique @default(cuid())
+  ticketCode     String
   scannedAt      DateTime?
   scannedById    String?
   scannedAtEvent DateTime?
@@ -88,6 +89,7 @@ model Participant {
   @@index([eventId, busId])
   @@index([eventId, name])
   @@index([scannedAt])
+  @@index([ticketCode])
   @@unique([eventId, busId, order])
 }
 

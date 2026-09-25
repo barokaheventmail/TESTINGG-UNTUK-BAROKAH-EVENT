@@ -5,6 +5,11 @@ import { logger } from '@/lib/logger'
 export async function GET(request: NextRequest) {
   const q = (request.nextUrl.searchParams.get('q') ?? '').trim().slice(0, 100)
   const eventId = (request.nextUrl.searchParams.get('eventId') ?? '').trim().slice(0, 100)
+  const busIds = (request.nextUrl.searchParams.get('busIds') ?? '')
+    .split(',')
+    .map((id) => id.trim())
+    .filter(Boolean)
+    .slice(0, 50)
   if (!q) return NextResponse.json({ matches: [] })
 
   const matches = await prisma.participant.findMany({
@@ -12,13 +17,14 @@ export async function GET(request: NextRequest) {
       name: { contains: q, mode: 'insensitive' },
       event: { status: 'ACTIVE' },
       ...(eventId ? { eventId } : {}),
+      ...(busIds.length ? { busId: { in: busIds } } : {}),
     },
     select: {
       token: true,
       name: true,
       order: true,
       bus: { select: { name: true } },
-      event: { select: { title: true, date: true } },
+      event: { select: { id: true, title: true, date: true } },
     },
     orderBy: [{ event: { date: 'desc' } }, { order: 'asc' }],
     take: 8,
@@ -28,6 +34,7 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     matches: matches.map((p) => ({
+      eventId: p.event.id,
       token: p.token,
       name: p.name,
       order: p.order,

@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { randomUUID } from 'crypto'
 import { z } from 'zod'
 import type { Prisma } from '@prisma/client'
-import { requireUser } from '@/lib/auth'
+import { requireAdminSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
+import { ticketCodeFromToken } from '@/lib/scan'
 
 const participantSchema = z.object({
   name: z.string().trim().min(1, 'Nama wajib diisi'),
@@ -17,7 +19,7 @@ const participantSchema = z.object({
 type Params = { params: Promise<{ id: string }> }
 
 export async function GET(request: NextRequest, { params }: Params) {
-  const session = await requireUser()
+  const session = await requireAdminSession()
   if (!session || session.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
@@ -82,7 +84,7 @@ export async function GET(request: NextRequest, { params }: Params) {
 }
 
 export async function POST(request: NextRequest, { params }: Params) {
-  const session = await requireUser()
+  const session = await requireAdminSession()
   if (!session || session.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
@@ -118,6 +120,7 @@ export async function POST(request: NextRequest, { params }: Params) {
       _max: { order: true },
     })
 
+    const token = randomUUID()
     const created = await tx.participant.create({
       data: {
         eventId: id,
@@ -128,6 +131,8 @@ export async function POST(request: NextRequest, { params }: Params) {
         seat: seat || null,
         room: room || null,
         vw: vw || null,
+        token,
+        ticketCode: ticketCodeFromToken(event.date, token),
       },
     })
 

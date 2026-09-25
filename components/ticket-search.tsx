@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { BadgeCheck, QrCode, Search, SearchX, Ticket } from 'lucide-react'
 import { formatTanggalPendek } from '@/lib/dates'
 
 export type SearchMatch = {
+  eventId: string
   token: string
   name: string
   order: number
@@ -14,14 +15,35 @@ export type SearchMatch = {
   eventDate: string
 }
 
-export function TicketSearch({ eventId, disabled }: { eventId?: string; disabled?: boolean } = {}) {
-  const router = useRouter()
-  const [query, setQuery] = useState('')
-  const [selected, setSelected] = useState<SearchMatch | null>(null)
-  const [notFound, setNotFound] = useState(false)
-  const [open, setOpen] = useState(false)
-  const [matches, setMatches] = useState<SearchMatch[]>([])
-  const [loading, setLoading] = useState(false)
+export type TicketSearchHandle = {
+  search: (name: string, token?: string) => void
+}
+
+export const TicketSearch = forwardRef<
+  TicketSearchHandle,
+  { eventId?: string; disabled?: boolean; busIds?: string[]; initialQuery?: string }
+>(function TicketSearch({ eventId, disabled, busIds, initialQuery } = {}, ref) {
+    const router = useRouter()
+    const [query, setQuery] = useState('')
+    const [selected, setSelected] = useState<SearchMatch | null>(null)
+    const [notFound, setNotFound] = useState(false)
+    const [open, setOpen] = useState(false)
+    const [matches, setMatches] = useState<SearchMatch[]>([])
+    const [loading, setLoading] = useState(false)
+    const didApplyInitial = useRef(false)
+    const didAutoSelect = useRef(false)
+
+    function buildUrl(q: string) {
+      const bus = busIds && busIds.length > 0 ? `&busIds=${encodeURIComponent(busIds.join(','))}` : ''
+      return `/api/public/search?q=${encodeURIComponent(q)}${eventId ? `&eventId=${encodeURIComponent(eventId)}` : ''}${bus}`
+    }
+
+  useEffect(() => {
+    if (initialQuery && !didApplyInitial.current) {
+      didApplyInitial.current = true
+      setQuery(initialQuery)
+    }
+  }, [initialQuery])
 
   useEffect(() => {
     if (disabled) {
@@ -39,10 +61,17 @@ export function TicketSearch({ eventId, disabled }: { eventId?: string; disabled
     const ctrl = new AbortController()
     const t = setTimeout(async () => {
       try {
-        const url = `/api/public/search?q=${encodeURIComponent(q)}${eventId ? `&eventId=${encodeURIComponent(eventId)}` : ''}`
-        const res = await fetch(url, { signal: ctrl.signal })
+        const res = await fetch(buildUrl(q), { signal: ctrl.signal })
         const data = await res.json()
-        setMatches(data.matches ?? [])
+        const list = (data.matches ?? []) as SearchMatch[]
+        setMatches(list)
+        if (didApplyInitial.current && !didAutoSelect.current && list.length > 0) {
+          didAutoSelect.current = true
+          const match = list.find((m) => m.name === q) ?? list[0]
+          select(match)
+          setOpen(false)
+          document.getElementById('cari-nama')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
       } catch {
         // ignore aborted / network errors
       } finally {
@@ -53,11 +82,16 @@ export function TicketSearch({ eventId, disabled }: { eventId?: string; disabled
       ctrl.abort()
       clearTimeout(t)
     }
-  }, [query, eventId, disabled])
+  }, [query, eventId, disabled, busIds, initialQuery])
 
   const display = useMemo(() => matches.slice(0, 6), [matches])
 
   function select(match: SearchMatch) {
+    // pencarian lintas event (mis. di beranda): masuk ke halaman event yang cocok
+    if (!eventId) {
+      router.push(`/event/${match.eventId}?q=${encodeURIComponent(match.name)}`)
+      return
+    }
     setSelected(match)
     setNotFound(false)
     setOpen(false)
@@ -74,6 +108,40 @@ export function TicketSearch({ eventId, disabled }: { eventId?: string; disabled
       setOpen(false)
     }
   }
+
+  function runSearch(name: string, token?: string) {
+    if (disabled) return
+    const q = name.trim()
+    if (!q) return
+    setQuery(name)
+    setOpen(false)
+    setSelected(null)
+    setNotFound(false)
+    setLoading(true)
+    fetch(buildUrl(q))
+      .then(async (res) => {
+        const data = await res.json()
+        const list = (data.matches ?? []) as SearchMatch[]
+        setMatches(list)
+        if (list.length > 0) {
+        const match = token ? list.find((m) => m.token === token) : undefined
+        if (token && !match) {
+          setNotFound(true)
+        } else {
+          select(match ?? list[0])
+        }
+      } else {
+        setNotFound(true)
+      }
+      })
+      .catch(() => {})
+      .finally(() => {
+        setLoading(false)
+        document.getElementById('cari-nama')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      })
+  }
+
+  useImperativeHandle(ref, () => ({ search: runSearch }), [eventId, disabled, busIds])
 
   return (
     <div className="relative w-full" id="cari-nama">
@@ -210,4 +278,5 @@ export function TicketSearch({ eventId, disabled }: { eventId?: string; disabled
       )}
     </div>
   )
-}
+  },
+)

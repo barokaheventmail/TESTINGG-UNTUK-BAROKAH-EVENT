@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { jwtVerify } from 'jose'
-import { COOKIE_NAME } from '@/lib/auth'
+import { LEGACY_COOKIE_NAME, SESSION_COOKIE_NAMES, type SessionRole } from '@/lib/auth'
 
 const DEV_SECRET = 'dev-secret-change-me'
 
@@ -12,65 +12,60 @@ const secret = () => {
   return new TextEncoder().encode(value)
 }
 
-async function getSession(request: NextRequest) {
-  const token = request.cookies.get(COOKIE_NAME)?.value
+type VerifiedSession = { sub: string; role: SessionRole }
+
+async function readSession(token: string | undefined): Promise<VerifiedSession | null> {
   if (!token) return null
   try {
     const { payload } = await jwtVerify(token, secret())
-    return {
-      sub: String(payload.sub ?? ''),
-      role: String(payload.role ?? ''),
-    }
+    const role = payload.role
+    if (!payload.sub || (role !== 'ADMIN' && role !== 'CREW')) return null
+    return { sub: String(payload.sub), role }
   } catch {
     return null
   }
 }
 
-function resolveDest(next: string | null, role: string): string {
-  const target = role === 'ADMIN' ? '/admin' : '/crew'
-  if (!next || !next.startsWith('/') || next.startsWith('//')) return target
-  const isAdminPath = next.startsWith('/admin')
-  const allowed = role === 'ADMIN' || !isAdminPath
-  return allowed ? next : target
-}
+async function routeSession(request: NextRequest, pathname: string): Promise<VerifiedSession | null> {
+  const adminCookie = request.cookies.get(SESSION_COOKIE_NAMES.ADMIN)?.value
+  const crewCookie = request.cookies.get(SESSION_COOKIE_NAMES.CREW)?.value
+  const legacyCookie = request.cookies.get(LEGACY_COOKIE_NAME)?.value
+  const [admin, crew, legacy] = await Promise.all([
+    readSession(adminCookie),
+    readSession(crewCookie),
+    readSession(legacyCookie),
+  ])
 
-/** Apakah role ini memiliki akses ke path yang diminta `next`? */
-function isAllowedNext(next: string | null, role: string): boolean {
-  if (!next || !next.startsWith('/') || next.startsWith('//')) return false
-  return role === 'ADMIN' || !next.startsWith('/admin')
+  if (pathname.startsWith('/admin')) {
+    if (adminCookie) return admin
+    return legacy?.role === 'ADMIN' ? legacy : null
+  }
+
+  if (crewCookie) return crew
+  if (adminCookie) return admin
+  return legacy
 }
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
-  const session = await getSession(request)
 
-  const loginUrl = request.nextUrl.clone()
-  loginUrl.pathname = '/login'
-  loginUrl.searchParams.set('next', pathname)
-
-  const isLoginPage = pathname === '/login'
-
-  if (isLoginPage) {
-    if (session) {
-      const next = request.nextUrl.searchParams.get('next')
-      // Jika pengguna sudah login namun meminta halaman yang tidak diizinkan
-      // untuk role-nya (mis. crew mengakses /admin), render halaman login
-      // agar bisa pindah akun - jangan bounce/loop ke halaman rol lain.
-      if (next && !isAllowedNext(next, session.role)) {
-        return NextResponse.next()
-      }
-      const dest = resolveDest(next, session.role)
-      return NextResponse.redirect(new URL(dest, request.url))
-    }
+  if (pathname.startsWith('/login')) {
     return NextResponse.next()
   }
 
+  const role: SessionRole = pathname.startsWith('/admin') ? 'ADMIN' : 'CREW'
+  const session = await routeSession(request, pathname)
+
   if (!session) {
+    const loginUrl = request.nextUrl.clone()
+    loginUrl.pathname = '/login'
+    loginUrl.searchParams.set('next', pathname)
+    loginUrl.searchParams.set('scope', role)
     return NextResponse.redirect(loginUrl)
   }
 
   if (pathname.startsWith('/admin') && session.role !== 'ADMIN') {
-    return NextResponse.redirect(new URL('/login?next=/admin', request.url))
+    return NextResponse.redirect(new URL('/login?scope=ADMIN&next=/admin', request.url))
   }
 
   return NextResponse.next()

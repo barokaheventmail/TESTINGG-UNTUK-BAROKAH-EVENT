@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUser } from '@/lib/auth'
+import { requireAdminSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
 
@@ -12,7 +12,7 @@ function csvCell(v: string | number | Date | null | undefined): string {
 }
 
 export async function GET(request: NextRequest, { params }: Params) {
-  const session = await requireUser()
+  const session = await requireAdminSession()
   if (!session || session.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }

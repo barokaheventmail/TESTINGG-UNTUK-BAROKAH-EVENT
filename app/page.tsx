@@ -53,7 +53,7 @@ export default async function Home() {
               halaman tiap event.
             </p>
             <div className="animate-fade-up delay-4 relative z-50">
-              <TicketSearch disabled />
+              <TicketSearch />
             </div>
           </div>
         </div>

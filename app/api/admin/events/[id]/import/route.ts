@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUser } from '@/lib/auth'
+import { randomUUID } from 'crypto'
+import { requireAdminSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
 import { parseWorkbook } from '@/lib/excel'
+import { ticketCodeFromToken } from '@/lib/scan'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024
 const MAX_ROWS = 50000
@@ -10,7 +12,7 @@ const MAX_ROWS = 50000
 type Params = { params: Promise<{ id: string }> }
 
 export async function POST(request: NextRequest, { params }: Params) {
-  const session = await requireUser()
+  const session = await requireAdminSession()
   if (!session || session.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
@@ -91,7 +93,10 @@ export async function POST(request: NextRequest, { params }: Params) {
             await tx.participant.update({ where: { id: exists.id }, data })
             updated++
           } else {
-            await tx.participant.create({ data: { ...data, eventId: id, busId: busRec.id, order: p.order } })
+            const token = randomUUID()
+            await tx.participant.create({
+              data: { ...data, eventId: id, busId: busRec.id, order: p.order, token, ticketCode: ticketCodeFromToken(event.date, token) },
+            })
             created++
           }
         }

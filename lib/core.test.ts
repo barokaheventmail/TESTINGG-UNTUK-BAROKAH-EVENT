@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import * as XLSX from 'xlsx'
 import { parseWorkbook, parseDate } from '../lib/excel'
-import { encodeToken, decodeToken } from '../lib/scan'
+import { encodeToken, decodeToken, ticketCodeFromToken } from '../lib/scan'
 
 const HEADERS = ['No', 'Nama Lengkap', 'Tempat Lahir', 'Tanggal Lahir', 'No Telp/Hp', 'No Kursi', 'No Kamar', 'No VW']
 
@@ -139,5 +139,10 @@ describe('qr token', () => {
   it('decode menolak string kosong', () => {
     expect(decodeToken('')).toBeNull()
     expect(decodeToken('   ')).toBeNull()
+  })
+  it('ticketCodeFromToken menghasilkan kode tiket huruf besar persis', () => {
+    const date = new Date('2026-09-17T00:00:00.000Z')
+    expect(ticketCodeFromToken(date, 'cmuh1z9zw0008ifaat10qud8e')).toBe('BTH-26-QUD8E')
+    expect(ticketCodeFromToken(date, 'cmu0000l3prf')).toBe('BTH-26-L3PRF')
   })
 })

@@ -2,6 +2,11 @@ import QRCode from 'qrcode'
 
 export const QR_PREFIX = 'BTHT:'
 
+export function ticketCodeFromToken(date: Date, token: string): string {
+  const year = String(date.getFullYear() % 100).padStart(2, '0')
+  return `BTH-${year}-${token.slice(-5).toUpperCase()}`
+}
+
 export function encodeToken(token: string): string {
   return `${QR_PREFIX}${token}`
 }

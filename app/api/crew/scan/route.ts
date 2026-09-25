@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUser } from '@/lib/auth'
+import { requireCrewSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
 import { decodeToken } from '@/lib/scan'
 
 export async function POST(request: NextRequest) {
-  const session = await requireUser()
+  const session = await requireCrewSession()
   if (!session || (session.role !== 'CREW' && session.role !== 'ADMIN')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'QR tidak valid.' }, { status: 400 })
   }
 
-  const p = await prisma.participant.findUnique({
+  let p = await prisma.participant.findUnique({
     where: { token },
     include: {
       bus: { select: { name: true } },
@@ -32,9 +32,38 @@ export async function POST(request: NextRequest) {
     },
   })
 
+  const ticketCode = raw.trim()
+  if (!p && ticketCode) {
+    const matches = await prisma.participant.findMany({
+      where: { ticketCode },
+      select: { token: true },
+    })
+    if (matches.length > 1) {
+      logger.warn('scan ambiguous ticket code', { by: session.username, code: ticketCode })
+      return NextResponse.json(
+        { error: 'No. Tiket tidak unik. Gunakan QR atau tautan tiket untuk verifikasi.' },
+        { status: 409 },
+      )
+    }
+    if (matches.length === 1) {
+      logger.info('scan resolved ticket code', { by: session.username, code: ticketCode, token: matches[0].token })
+      p = await prisma.participant.findUnique({
+        where: { token: matches[0].token },
+        include: {
+          bus: { select: { name: true } },
+          event: { select: { id: true, title: true, date: true, status: true } },
+          scannedBy: { select: { username: true } },
+        },
+      })
+    }
+  }
+
   if (!p) {
     logger.warn('scan unknown QR', { by: session.username, token: String(token).slice(0, 8) })
-    return NextResponse.json({ error: 'QR tidak dikenali. Pastikan QR adalah tiket peserta.' }, { status: 404 })
+    return NextResponse.json(
+      { error: 'QR atau No. Tiket tidak dikenali. Periksa kembali kode yang dimasukkan.' },
+      { status: 404 },
+    )
   }
 
   if (p.event.status !== 'ACTIVE') {

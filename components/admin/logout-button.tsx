@@ -4,14 +4,24 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { LogOut } from 'lucide-react'
 
-export function LogoutButton({ variant = 'light' }: { variant?: 'light' | 'dark' }) {
+export function LogoutButton({
+  variant = 'light',
+  scope = 'ADMIN',
+}: {
+  variant?: 'light' | 'dark'
+  scope?: 'ADMIN' | 'CREW'
+}) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
 
   async function logout() {
     setLoading(true)
-    await fetch('/api/auth/logout', { method: 'POST' })
-    router.replace('/login')
+    await fetch('/api/auth/logout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scope }),
+    })
+    router.replace(`/login?scope=${scope}&next=${scope === 'ADMIN' ? '/admin' : '/crew'}&switch=1`)
     router.refresh()
   }
 

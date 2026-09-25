@@ -3,7 +3,7 @@ import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { ArrowLeft, History, ScanBarcode, Search } from 'lucide-react'
 import type { Prisma } from '@prisma/client'
-import { requireUser } from '@/lib/auth'
+import { requireCrewSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { formatWaktuLengkap } from '@/lib/dates'
 import { LogoutButton } from '@/components/admin/logout-button'
@@ -15,8 +15,8 @@ const PER_PAGE = 50
 type SearchParams = Promise<{ page?: string; q?: string }>
 
 export default async function CrewRiwayatPage({ searchParams }: { searchParams: SearchParams }) {
-  const session = await requireUser()
-  if (!session) redirect('/login?next=/crew/riwayat')
+  const session = await requireCrewSession()
+  if (!session) redirect('/login?scope=CREW&next=/crew/riwayat')
 
   const sp = await searchParams
   const page = Math.max(1, Number(sp.page) || 1)
@@ -86,7 +86,7 @@ export default async function CrewRiwayatPage({ searchParams }: { searchParams: 
               </h1>
             </div>
           </div>
-          <LogoutButton variant="dark" />
+          <LogoutButton variant="dark" scope="CREW" />
         </div>
         <p className="mx-auto mt-1 max-w-md text-left text-xs text-white/60">Crew: {session.username}</p>
       </header>
