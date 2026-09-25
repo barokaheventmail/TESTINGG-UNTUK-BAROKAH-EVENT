@@ -15,13 +15,13 @@ export function QrBusFilter({
 }) {
   const router = useRouter()
   const allIds = buses.map((b) => b.id)
-  const initialAll = initial.length === 0 || initial.length === buses.length
+  const initialAll = initial.length === buses.length && buses.length > 0
   const [selected, setSelected] = useState<Set<string>>(() => new Set(initialAll ? allIds : initial))
 
   function apply(next: Set<string>) {
     setSelected(next)
     if (next.size === buses.length) {
-      router.replace(`/admin/events/${eventId}/qr`)
+      router.replace(`/admin/events/${eventId}/qr?bus=${allIds.join(',')}`)
     } else if (next.size === 0) {
       router.replace(`/admin/events/${eventId}/qr?bus=none`)
     } else {

@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { Loader2, Trash2 } from 'lucide-react'
+import { notifyParticipantsChanged } from '@/lib/events'
 
 export function DeleteParticipant({ eventId, participant }: { eventId: string; participant: { id: string; name: string } }) {
   const router = useRouter()
@@ -18,6 +19,7 @@ export function DeleteParticipant({ eventId, participant }: { eventId: string; p
       const data = await res.json().catch(() => null)
       if (!res.ok) throw new Error(data?.error ?? 'Gagal menghapus peserta.')
       setConfirming(false)
+      notifyParticipantsChanged()
       router.refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Gagal menghapus peserta.')

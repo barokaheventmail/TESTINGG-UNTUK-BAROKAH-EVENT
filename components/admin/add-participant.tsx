@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { Loader2, UserPlus, X } from 'lucide-react'
+import { notifyParticipantsChanged } from '@/lib/events'
 
 export function AddParticipant({ eventId, buses }: { eventId: string; buses: { id: string; name: string }[] }) {
   const router = useRouter()
@@ -28,6 +29,7 @@ export function AddParticipant({ eventId, buses }: { eventId: string; buses: { i
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Gagal menambah peserta.')
       setForm({ name: '', busName: form.busName, phone: '', seat: '', room: '', vw: '' })
+      notifyParticipantsChanged()
       router.refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Gagal menambah peserta.')

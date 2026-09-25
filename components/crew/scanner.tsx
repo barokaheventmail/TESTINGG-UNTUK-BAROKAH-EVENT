@@ -77,6 +77,7 @@ export function CrewScanner({ username }: { username: string }) {
   }
 
   async function startCamera() {
+    if (starting || scanning) return
     setStarting(true)
     setError(null)
     try {
@@ -146,20 +147,24 @@ export function CrewScanner({ username }: { username: string }) {
 
         {/* Kamera area */}
         {!manualMode && (
-          <div className="mt-4">
-            {scanning ? (
-              <div className="overflow-hidden rounded-2xl border-2 border-dashed border-[#1b4f9c] bg-[#0f2a52]">
-                <div id={SCANNER_ID} className="mx-auto aspect-square w-full" />
-              </div>
-            ) : (
+          <div className="relative mt-4 overflow-hidden rounded-2xl border-2 border-dashed border-[#1b4f9c] bg-[#0f2a52]">
+            <div id={SCANNER_ID} className="mx-auto aspect-square w-full" />
+            {!scanning && (
               <button
                 type="button"
                 onClick={startCamera}
                 disabled={starting || busy}
-                className="flex aspect-square w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[#dfe4e8] bg-[#f8fafc] text-sm font-bold text-[#1b4f9c] transition-colors duration-200 hover:border-[#1b4f9c] hover:bg-[#eef3fb] active:scale-[0.99] disabled:opacity-60"
+                className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-sm font-bold text-white transition-colors duration-200 hover:bg-white/10 active:scale-[0.99] disabled:opacity-60"
               >
-                {starting ? <Loader2 size={20} className="animate-spin" /> : <Camera size={20} />}
-                {starting ? 'Mengaktifkan kamera…' : 'Nyalakan Kamera'}
+                {starting ? (
+                  <>
+                    <Loader2 size={20} className="animate-spin" /> Mengaktifkan kamera…
+                  </>
+                ) : (
+                  <>
+                    <Camera size={20} /> Nyalakan Kamera
+                  </>
+                )}
               </button>
             )}
           </div>
@@ -188,7 +193,10 @@ export function CrewScanner({ username }: { username: string }) {
         <div className="mt-4 flex items-center justify-between gap-2 border-t border-[#edf0f3] pt-4">
           <button
             type="button"
-            onClick={() => setManualMode((m) => !m)}
+            onClick={() => {
+              if (!manualMode && scanning) stopCamera()
+              setManualMode((m) => !m)
+            }}
             className="rounded-full border border-[#dfe4e8] px-4 py-2 text-xs font-bold text-[#657080] transition-colors hover:bg-[#f1f3f5]"
           >
             {manualMode ? 'Beralih ke Kamera' : 'Input Manual'}

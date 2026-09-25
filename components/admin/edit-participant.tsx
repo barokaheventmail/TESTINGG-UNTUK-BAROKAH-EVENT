@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { Loader2, Pencil, X } from 'lucide-react'
 import { toISOInput } from '@/lib/dates'
+import { notifyParticipantsChanged } from '@/lib/events'
 
 export type RowBus = { id: string; name: string; order: number }
 export type RowParticipant = {
@@ -82,6 +83,7 @@ export function EditParticipant({ eventId, participant, buses }: { eventId: stri
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Gagal memperbarui peserta.')
       setOpen(false)
+      notifyParticipantsChanged()
       router.refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Gagal memperbarui peserta.')

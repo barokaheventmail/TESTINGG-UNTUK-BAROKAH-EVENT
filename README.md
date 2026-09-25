@@ -92,6 +92,11 @@ middleware.ts         # proteksi /admin (ADMIN) & /crew (CREW)
 | `pnpm db:up` / `pnpm db:migrate` / `pnpm db:seed` | database |
 | `pnpm db:studio` | Prisma Studio (navigate DB) |
 
+## Batas data (skalabilitas)
+- Tidak ada batas jumlah peserta per event; semua layar memakai agregasi (`_count`/`groupBy`) dan daftar peserta admin dimuat sebagian (200 baris + "Muat lebih banyak", pencarian server-side). Pengalaman nyaman sampai ±10.000 peserta/event; di atas itu tetap berfungsi, tetapi melihat massal sebaiknya via ekspor CSV (belum tersedia).
+- Import Excel dibatasi **50.000 baris per file**; untuk data lebih besar, pisahkan menjadi beberapa file (import ulang tidak menggandakan data).
+- Cari nama `/api/public/search` memakai LIKE (tanpa indeks khusus) — mulai terasa melambat di puluhan ribu baris; batasi event aktif agar Search Engine bisa lebih cepat.
+
 ## Catatan keamanan
 - Session JWT httpOnly cookie, 7 hari. Ganti `JWT_SECRET` di production.
 - Rol ADMIN hanya bisa akses `/admin`; CREW + ADMIN bisa `/crew`.

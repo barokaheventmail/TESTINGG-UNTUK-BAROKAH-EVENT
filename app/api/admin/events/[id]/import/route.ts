@@ -5,6 +5,7 @@ import { logger } from '@/lib/logger'
 import { parseWorkbook } from '@/lib/excel'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024
+const MAX_ROWS = 50000
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -46,6 +47,14 @@ export async function POST(request: NextRequest, { params }: Params) {
 
   if (parsed.buses.length === 0) {
     return NextResponse.json({ error: 'Tidak ada data peserta ditemukan di file.' }, { status: 400 })
+  }
+
+  const totalRows = parsed.buses.reduce((acc, b) => acc + b.participants.length, 0)
+  if (totalRows > MAX_ROWS) {
+    return NextResponse.json(
+      { error: `File terlalu besar: ${totalRows} baris. Maksimal ${MAX_ROWS} baris per file. Pisahkan menjadi beberapa file.` },
+      { status: 400 },
+    )
   }
 
   const busResults: { name: string; created: number; updated: number; skipped: number }[] = []

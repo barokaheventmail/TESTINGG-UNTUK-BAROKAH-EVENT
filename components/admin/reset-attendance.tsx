@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { Loader2, RotateCcw } from 'lucide-react'
+import { notifyParticipantsChanged } from '@/lib/events'
 
 export function ResetAttendance({ eventId, attendedCount }: { eventId: string; attendedCount: number }) {
   const router = useRouter()
@@ -18,6 +19,7 @@ export function ResetAttendance({ eventId, attendedCount }: { eventId: string; a
       const data = await res.json().catch(() => null)
       if (!res.ok) throw new Error(data?.error ?? 'Gagal mereset kehadiran.')
       setConfirming(false)
+      notifyParticipantsChanged()
       router.refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Gagal mereset kehadiran.')

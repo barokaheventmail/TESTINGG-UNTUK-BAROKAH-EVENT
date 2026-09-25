@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { LayoutDashboard, QrCode } from 'lucide-react'
+import { History, LayoutDashboard, QrCode } from 'lucide-react'
 import { LogoutButton } from '@/components/admin/logout-button'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -19,6 +19,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
           </div>
           <nav className="flex items-center gap-2">
+            <Link
+              href="/admin/logs"
+              className="flex items-center gap-1.5 rounded-full border border-[#dfe4e8] bg-white px-3 py-1.5 text-xs font-bold text-[#1b3555] transition-colors duration-200 hover:bg-[#f1f3f5]"
+            >
+              <History size={13} /> Riwayat
+            </Link>
             <Link
               href="/admin"
               className="flex items-center gap-1.5 rounded-full border border-[#dfe4e8] bg-white px-3 py-1.5 text-xs font-bold text-[#1b3555] transition-colors duration-200 hover:bg-[#f1f3f5]"

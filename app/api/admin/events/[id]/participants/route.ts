@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import type { Prisma } from '@prisma/client'
 import { requireUser } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
@@ -14,6 +15,71 @@ const participantSchema = z.object({
 })
 
 type Params = { params: Promise<{ id: string }> }
+
+export async function GET(request: NextRequest, { params }: Params) {
+  const session = await requireUser()
+  if (!session || session.role !== 'ADMIN') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  const { id } = await params
+
+  const sp = request.nextUrl.searchParams
+  const q = (sp.get('q') ?? '').trim().slice(0, 100)
+  const busId = (sp.get('busId') ?? '').trim().slice(0, 100)
+  const status = sp.get('status') ?? 'all'
+
+  const rawTake = Number(sp.get('take') ?? '200')
+  const rawSkip = Number(sp.get('skip') ?? '0')
+  const take = Number.isFinite(rawTake) ? Math.min(Math.max(1, Math.floor(rawTake)), 500) : 200
+  const skip = Number.isFinite(rawSkip) ? Math.max(0, Math.floor(rawSkip)) : 0
+
+  const where: Prisma.ParticipantWhereInput = { eventId: id }
+  if (busId && busId !== 'all') where.busId = busId
+  if (status === 'attended') where.scannedAt = { not: null }
+  else if (status === 'pending') where.scannedAt = null
+  if (q) {
+    where.OR = [
+      { name: { contains: q, mode: 'insensitive' } },
+      { phone: { contains: q, mode: 'insensitive' } },
+      { room: { contains: q, mode: 'insensitive' } },
+      { vw: { contains: q, mode: 'insensitive' } },
+      { seat: { contains: q, mode: 'insensitive' } },
+      { birthPlace: { contains: q, mode: 'insensitive' } },
+    ]
+  }
+
+  const [items, total] = await Promise.all([
+    prisma.participant.findMany({
+      where,
+      orderBy: [{ busId: 'asc' }, { order: 'asc' }],
+      include: { scannedBy: { select: { username: true } } },
+      take,
+      skip,
+    }),
+    prisma.participant.count({ where }),
+  ])
+  logger.info('admin participants list', { eventId: id, by: session.username, q, busId, status, take, skip, hits: total })
+
+  return NextResponse.json({
+    items: items.map((p) => ({
+      id: p.id,
+      busId: p.busId,
+      order: p.order,
+      name: p.name,
+      birthPlace: p.birthPlace,
+      birthDate: p.birthDate ? p.birthDate.toISOString() : null,
+      phone: p.phone,
+      seat: p.seat,
+      room: p.room,
+      vw: p.vw,
+      scannedAt: p.scannedAt ? p.scannedAt.toISOString() : null,
+      scannedBy: p.scannedBy,
+    })),
+    total,
+    skip,
+    take,
+  })
+}
 
 export async function POST(request: NextRequest, { params }: Params) {
   const session = await requireUser()

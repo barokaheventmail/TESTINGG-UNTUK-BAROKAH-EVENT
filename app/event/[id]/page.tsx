@@ -9,25 +9,45 @@ import { TicketSearch } from '@/components/ticket-search'
 export const metadata: Metadata = { title: 'Detail Event – Barokah Tour and Travel', robots: { index: false } }
 export const dynamic = 'force-dynamic'
 
+const LIST_LIMIT = 15
+
 export default async function EventPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const event = await prisma.event.findUnique({
-    where: { id },
-    include: {
-      buses: {
-        orderBy: { order: 'asc' },
-        include: { participants: { orderBy: { order: 'asc' } } },
-      },
-    },
-  })
+  const [event, totalByBus, attendedByBus] = await Promise.all([
+    prisma.event.findUnique({ where: { id }, include: { buses: { orderBy: { order: 'asc' } } } }),
+    prisma.participant.groupBy({ by: ['busId'], where: { eventId: id }, _count: { _all: true } }),
+    prisma.participant.groupBy({
+      by: ['busId'],
+      where: { eventId: id, scannedAt: { not: null } },
+      _count: { _all: true },
+    }),
+  ])
 
   if (!event || event.status !== 'ACTIVE') notFound()
 
-  const total = event.buses.reduce((acc, b) => acc + b.participants.length, 0)
-  const attended = event.buses.reduce(
-    (acc, b) => acc + b.participants.filter((p) => p.scannedAt !== null).length,
-    0
+  const rosters = await Promise.all(
+    event.buses.map((bus) =>
+      prisma.participant.findMany({
+        where: { eventId: id, busId: bus.id },
+        select: { id: true, order: true, name: true, room: true, vw: true, scannedAt: true },
+        orderBy: { order: 'asc' },
+        take: LIST_LIMIT + 1,
+      }),
+    ),
   )
+
+  const totalMap = new Map(totalByBus.map((r) => [r.busId, r._count._all]))
+  const attendedMap = new Map(attendedByBus.map((r) => [r.busId, r._count._all]))
+
+  const busSections = event.buses.map((bus, i) => ({
+    bus,
+    participants: rosters[i],
+    total: totalMap.get(bus.id) ?? 0,
+    attended: attendedMap.get(bus.id) ?? 0,
+  }))
+
+  const total = busSections.reduce((acc, s) => acc + s.total, 0)
+  const attended = busSections.reduce((acc, s) => acc + s.attended, 0)
 
   return (
     <main className="min-h-screen bg-[#f4f7fa] px-4 py-8">
@@ -86,18 +106,18 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
 
             {event.buses.length > 0 ? (
               <div className="mt-6 space-y-5">
-                {event.buses.map((bus) => (
+                {busSections.map(({ bus, participants, total: busTotal, attended: busAttended }) => (
                   <div key={bus.id} className="overflow-hidden rounded-2xl border border-[#dfe4e8]">
                     <div className="flex items-center justify-between bg-[#eef3fb] px-4 py-3">
                       <p className="flex items-center gap-2 text-sm font-bold text-[#1b4f9c]">
                         <Bus size={15} /> {bus.name}
                       </p>
                       <span className="rounded-full bg-white px-2.5 py-0.5 text-[11px] font-bold text-[#657080]">
-                        {bus.participants.filter((p) => p.scannedAt !== null).length}/{bus.participants.length} hadir
+                        {busAttended}/{busTotal} hadir
                       </span>
                     </div>
                     <div className="divide-y divide-[#edf0f3]">
-                      {bus.participants.map((p) => (
+                      {participants.slice(0, LIST_LIMIT).map((p) => (
                         <div key={p.id} className="flex flex-wrap items-center gap-x-4 gap-y-0.5 px-4 py-2.5 text-sm">
                           <span className="w-8 shrink-0 font-bold text-[#9aa3af]">{p.order}</span>
                           <span className="min-w-0 font-semibold text-[#1b3555]">{p.name}</span>
@@ -112,7 +132,13 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
                           </span>
                         </div>
                       ))}
-                      {bus.participants.length === 0 && (
+                      {busTotal > LIST_LIMIT && (
+                        <p className="bg-[#fbfcfd] px-4 py-2.5 text-xs font-semibold text-[#657080]">
+                          Dan {busTotal - LIST_LIMIT} peserta lainnya — ketik nama Anda pada kolom{' '}
+                          &quot;Cari Nama Peserta&quot; di atas untuk melihat tiket &amp; QR.
+                        </p>
+                      )}
+                      {busTotal === 0 && (
                         <p className="px-4 py-3 text-xs text-[#657080]">Belum ada peserta di bus ini.</p>
                       )}
                     </div>

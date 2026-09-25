@@ -39,6 +39,8 @@ export default async function EventQR({
   if (rawBus === 'none') selectedIds = []
   else if (rawBus) selectedIds = rawBus.split(',').filter(Boolean)
 
+  const hasSelection = selectedIds !== null && selectedIds.length > 0
+
   const grouped = event.buses
     .map((bus) => ({
       bus,
@@ -47,19 +49,23 @@ export default async function EventQR({
         .sort((a, b) => a.order - b.order),
     }))
     .filter((g) => g.participants.length > 0)
-    .filter((g) => selectedIds === null || selectedIds.includes(g.bus.id))
+    .filter((g) => !hasSelection || selectedIds!.includes(g.bus.id))
 
-  const sections = await Promise.all(
-    grouped.map(async (group) => {
-      const cards = await Promise.all(
-        group.participants.map(async (p) => {
-          const qr = await qrDataUrl(encodeToken(p.token), 256)
-          return { p, qr }
-        }),
-      )
-      return { bus: group.bus, cards }
-    }),
-  )
+  type Section = { bus: (typeof event.buses)[number]; cards: { p: (typeof event.participants)[number]; qr: string }[] }
+  let sections: Section[] = []
+  if (hasSelection) {
+    sections = await Promise.all(
+      grouped.map(async (group) => {
+        const cards = await Promise.all(
+          group.participants.map(async (p) => {
+            const qr = await qrDataUrl(encodeToken(p.token), 256)
+            return { p, qr }
+          }),
+        )
+        return { bus: group.bus, cards }
+      }),
+    )
+  }
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -84,7 +90,15 @@ export default async function EventQR({
         initial={selectedIds ?? []}
       />
 
-      {event.buses.length > 0 && selectedIds !== null && selectedIds.length === 0 ? (
+      {selectedIds === null ? (
+        <div className="mt-8 rounded-2xl border border-dashed border-[#bfd3c4] bg-white p-10 text-center">
+          <p className="text-sm font-bold text-[#1b3555]">Pilih bus untuk mencetak QR</p>
+          <p className="mt-1 text-xs text-[#657080]">
+            Klik satu atau lebih nama bus di atas, lalu tekan Cetak. Ini mencegah halaman memuat ribuan QR sekaligus dan
+            menjaga browser tetap ringan.
+          </p>
+        </div>
+      ) : selectedIds.length === 0 ? (
         <div className="mt-8 rounded-2xl border border-dashed border-[#bfd3c4] bg-white p-10 text-center">
           <p className="text-sm font-bold text-[#1b3555]">Tidak ada bus yang dipilih</p>
           <p className="mt-1 text-xs text-[#657080]">Pilih minimal satu bus untuk dicetak.</p>
