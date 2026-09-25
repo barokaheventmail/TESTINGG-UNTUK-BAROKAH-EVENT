@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
-import { ArrowLeft, Bus, CalendarDays, MapPin, Printer } from 'lucide-react'
+import { ArrowLeft, Bus, CalendarDays, History, MapPin, Printer } from 'lucide-react'
 import { prisma } from '@/lib/db'
 import { formatTanggalPendek } from '@/lib/dates'
 import { EditEvent } from '@/components/admin/edit-event'
@@ -13,6 +13,9 @@ import { AddParticipant } from '@/components/admin/add-participant'
 import { BusChip } from '@/components/admin/bus-chip'
 import { ResetAttendance } from '@/components/admin/reset-attendance'
 import { ClearEventData } from '@/components/admin/clear-event-data'
+import { LogEntry } from '@/components/admin/log-entry'
+
+const MANAGEMENT_ACTIONS: string[] = ['scan.attended', 'scan.duplicate']
 
 export const metadata: Metadata = { title: 'Detail Event – Panel Admin', robots: { index: false } }
 
@@ -20,7 +23,7 @@ export const dynamic = 'force-dynamic'
 
 export default async function EventDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const [event, totalByBus, attendedByBus] = await Promise.all([
+  const [event, totalByBus, attendedByBus, eventLogs, eventLogCount] = await Promise.all([
     prisma.event.findUnique({ where: { id }, include: { buses: { orderBy: { order: 'asc' } } } }),
     prisma.participant.groupBy({ by: ['busId'], where: { eventId: id }, _count: { _all: true } }),
     prisma.participant.groupBy({
@@ -28,6 +31,13 @@ export default async function EventDetail({ params }: { params: Promise<{ id: st
       where: { eventId: id, scannedAt: { not: null } },
       _count: { _all: true },
     }),
+    prisma.activityLog.findMany({
+      where: { eventId: id, action: { notIn: MANAGEMENT_ACTIONS } },
+      orderBy: { createdAt: 'desc' },
+      take: 25,
+      include: { user: { select: { username: true } } },
+    }),
+    prisma.activityLog.count({ where: { eventId: id, action: { notIn: MANAGEMENT_ACTIONS } } }),
   ])
 
   if (!event) notFound()
@@ -158,6 +168,53 @@ export default async function EventDetail({ params }: { params: Promise<{ id: st
           totalParticipants={totalParticipants}
           totalAttended={totalAttended}
         />
+      </div>
+
+      <div className="mt-6 rounded-2xl border border-[#dfe4e8] bg-white p-5">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="flex items-center gap-1.5 text-sm font-bold text-[#1b3555]">
+              <History size={15} /> Riwayat Event
+            </h2>
+            <p className="mt-0.5 text-xs text-[#657080]">
+              Aksi kelola event ini (import, bus, peserta, reset). Scan crew tercatat di riwayat crew.
+            </p>
+          </div>
+          <Link
+            href={`/admin/logs?eventId=${event.id}`}
+            className="shrink-0 text-xs font-bold text-[#1b4f9c] hover:text-[#16407d]"
+          >
+            Lihat riwayat lengkap →
+          </Link>
+        </div>
+
+        {eventLogs.length === 0 ? (
+          <p className="mt-4 text-xs text-[#9aa3af]">Belum ada aktivitas kelola untuk event ini.</p>
+        ) : (
+          <>
+            <ul className="mt-3 max-h-[420px] divide-y divide-[#eef1f4] overflow-y-auto">
+              {eventLogs.map((log) => (
+                <LogEntry
+                  key={log.id}
+                  showEvent={false}
+                  log={{
+                    id: log.id,
+                    action: log.action,
+                    detail: log.detail,
+                    createdAt: log.createdAt,
+                    user: log.user,
+                    event: null,
+                  }}
+                />
+              ))}
+            </ul>
+            {eventLogCount > eventLogs.length && (
+              <p className="mt-3 text-xs font-semibold text-[#657080]">
+                …dan {eventLogCount - eventLogs.length} entri lainnya.
+              </p>
+            )}
+          </>
+        )}
       </div>
 
       <ClearEventData

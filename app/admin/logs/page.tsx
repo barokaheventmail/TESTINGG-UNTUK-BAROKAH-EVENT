@@ -2,8 +2,8 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { History } from 'lucide-react'
 import { prisma } from '@/lib/db'
-import { formatWaktuLengkap } from '@/lib/dates'
-import { formatLogDetail, groupLog, labelLog, LOG_ACTIONS, type LogDetail } from '@/lib/log-labels'
+import { LOG_ACTIONS } from '@/lib/log-labels'
+import { LogEntry } from '@/components/admin/log-entry'
 
 export const metadata: Metadata = { title: 'Riwayat – Panel Admin', robots: { index: false } }
 export const dynamic = 'force-dynamic'
@@ -140,28 +140,20 @@ export default async function AdminLogsPage({ searchParams }: { searchParams: Se
         <div className="mt-6 overflow-hidden rounded-2xl border border-[#dfe4e8] bg-white">
           <ul className="divide-y divide-[#eef1f4]">
             {logs.map((log) => {
-              const g = groupLog(log.action)
               const meta = data[log.eventId ?? '']
               const uname = data[log.userId ?? '']?.username
               return (
-                <li key={log.id} className="flex items-start gap-3 px-4 py-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${g.cls}`}>{g.group}</span>
-                      <span className="text-sm font-bold text-[#1b3555]">{labelLog(log.action)}</span>
-                    </div>
-                    <p className="mt-1 text-xs leading-relaxed text-[#657080]">
-                      {formatLogDetail(log.action, log.detail as unknown as LogDetail)}
-                    </p>
-                  </div>
-                  <div className="shrink-0 text-right text-xs">
-                    <p className="font-semibold text-[#657080]">{formatWaktuLengkap(new Date(log.createdAt))}</p>
-                    <p className="mt-0.5 text-[#9aa3af]">
-                      {meta?.title ?? '—'}
-                      {uname ? ` · ${uname}` : ''}
-                    </p>
-                  </div>
-                </li>
+                <LogEntry
+                  key={log.id}
+                  log={{
+                    id: log.id,
+                    action: log.action,
+                    detail: log.detail,
+                    createdAt: log.createdAt,
+                    user: uname ? { username: uname } : null,
+                    event: meta?.title ? { title: meta.title } : null,
+                  }}
+                />
               )
             })}
           </ul>
