@@ -50,12 +50,13 @@ export async function POST(_request: NextRequest, { params }: Params) {
 
     await tx.busWorker.deleteMany({ where: { userId: { in: userIds }, bus: { eventId: id } } })
     await tx.user.deleteMany({ where: { id: { in: deletedIds } } })
+    const orphans = await tx.user.deleteMany({ where: { role: 'CREW', workers: { none: {} } } })
     await tx.activityLog.create({
       data: {
         eventId: id,
         userId: session.sub,
         action: 'busCrew.deleteAccounts',
-        detail: { count: deletedIds.length, unlinked: outsideIds.size, usernames },
+        detail: { count: deletedIds.length, unlinked: outsideIds.size, orphans: orphans.count, usernames },
       },
     })
   })

@@ -19,7 +19,8 @@ export async function POST(_request: Request, { params }: Params) {
     const scanLogs = await tx.scanLog.deleteMany({ where: { participant: { eventId: id } } })
     const participants = await tx.participant.deleteMany({ where: { eventId: id } })
     const buses = await tx.bus.deleteMany({ where: { eventId: id } })
-    const summary = { buses: buses.count, participants: participants.count, scanLogs: scanLogs.count }
+    const orphans = await tx.user.deleteMany({ where: { role: 'CREW', workers: { none: {} } } })
+    const summary = { buses: buses.count, participants: participants.count, scanLogs: scanLogs.count, orphans: orphans.count }
     await tx.activityLog.create({
       data: {
         eventId: id,

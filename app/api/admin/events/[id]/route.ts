@@ -71,6 +71,8 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
   if (!existing) return NextResponse.json({ error: 'Event tidak ditemukan.' }, { status: 404 })
 
   await prisma.$transaction(async (tx) => {
+    await tx.bus.deleteMany({ where: { eventId: id } })
+    await tx.user.deleteMany({ where: { role: 'CREW', workers: { none: {} } } })
     await tx.activityLog.create({
       data: { eventId: id, userId: session.sub, action: 'event.delete', detail: { title: existing.title } },
     })

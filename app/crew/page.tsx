@@ -5,6 +5,7 @@ import { requireCrewSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { redirect } from 'next/navigation'
 import { CrewScanner } from '@/components/crew/scanner'
+import { SessionGuard } from '@/components/crew/session-guard'
 import { LogoutButton } from '@/components/admin/logout-button'
 
 export const metadata: Metadata = { title: 'Scan QR Peserta – Barokah Tour', robots: { index: false } }
@@ -26,6 +27,7 @@ export default async function CrewPage() {
 
   return (
     <main className="min-h-screen bg-[#0f2a52] pb-16">
+      <SessionGuard scope="CREW" />
       <header className="border-b border-white/10 px-4 py-5 text-center">
         <div className="mx-auto flex max-w-md items-center justify-between">
           <div>

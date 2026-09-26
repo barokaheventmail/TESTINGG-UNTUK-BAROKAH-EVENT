@@ -6,6 +6,7 @@ import type { Prisma } from '@prisma/client'
 import { requireCrewSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { formatWaktuLengkap } from '@/lib/dates'
+import { SessionGuard } from '@/components/crew/session-guard'
 import { LogoutButton } from '@/components/admin/logout-button'
 
 export const metadata: Metadata = { title: 'Riwayat Scan – Barokah Tour', robots: { index: false } }
@@ -67,6 +68,7 @@ export default async function CrewRiwayatPage({ searchParams }: { searchParams: 
 
   return (
     <main className="min-h-screen bg-[#0f2a52] pb-16">
+      <SessionGuard scope="CREW" />
       <header className="border-b border-white/10 px-4 py-5">
         <div className="mx-auto flex max-w-md items-center justify-between">
           <div className="flex min-w-0 items-center gap-2">

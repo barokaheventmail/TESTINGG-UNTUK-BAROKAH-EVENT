@@ -51,7 +51,7 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
 
   const { id, busId, workerId } = await params
 
-  const worker = await prisma.busWorker.findFirst({ where: { id: workerId, busId }, include: { bus: { select: { name: true } }, user: { select: { username: true, name: true } } } })
+  const worker = await prisma.busWorker.findFirst({ where: { id: workerId, busId }, include: { bus: { select: { name: true } }, user: { select: { id: true, username: true, name: true } } } })
   if (!worker) return NextResponse.json({ error: 'Crew tidak ditemukan.' }, { status: 404 })
 
   await prisma.$transaction(async (tx) => {
@@ -64,8 +64,17 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
       },
     })
     await tx.busWorker.delete({ where: { id: workerId } })
+    const remaining = await tx.busWorker.count({ where: { userId: worker.user.id } })
+    if (remaining === 0) {
+      await tx.user.delete({ where: { id: worker.user.id } })
+    }
   })
 
-  logger.info('crew removed', { eventId: id, by: session.username, bus: worker.bus.name, username: worker.user.username })
+  logger.info('crew removed', {
+    eventId: id,
+    by: session.username,
+    bus: worker.bus.name,
+    username: worker.user.username,
+  })
   return NextResponse.json({ removed: true })
 }

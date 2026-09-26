@@ -62,6 +62,7 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
       data: { eventId: id, userId: session.sub, action: 'bus.delete', detail: { name: existing.name, participants: totalPeserta } },
     })
     await tx.bus.delete({ where: { id: busId } })
+    await tx.user.deleteMany({ where: { role: 'CREW', workers: { none: {} } } })
   })
 
   logger.info('bus deleted', { eventId: id, by: session.username, busId, name: existing.name, participants: totalPeserta })
