@@ -19,7 +19,7 @@ import {
 import { TicketSearch, type TicketSearchHandle } from '@/components/ticket-search'
 import { formatTanggalPendek } from '@/lib/dates'
 
-export type EventTicketsParticipant = { id: string; order: number; name: string; token: string }
+export type EventTicketsParticipant = { id: string; order: number; name: string; token: string; present: boolean }
 
 export type EventTicketsSection = {
   busId: string
@@ -97,6 +97,16 @@ export function EventTickets({
   const [rosterLoadingIds, setRosterLoadingIds] = useState<Record<string, boolean>>({})
   const [busDropdownOpen, setBusDropdownOpen] = useState(false)
   const [multiOpen, setMultiOpen] = useState(false)
+  const [liveTotal, setLiveTotal] = useState(total)
+  const [liveAttended, setLiveAttended] = useState(attended)
+  const [livePerBus, setLivePerBus] = useState<Record<string, { attended: number; total: number }>>(() =>
+    Object.fromEntries(sections.map((s) => [s.busId, { attended: s.busAttended, total: s.busTotal }])),
+  )
+  const [livePresent, setLivePresent] = useState<Record<string, Set<string>>>(() => {
+    const map: Record<string, Set<string>> = {}
+    for (const s of sections) map[s.busId] = new Set(s.participants.filter((p) => p.present).map((p) => p.id))
+    return map
+  })
 
   const busOptions = sections.filter((s) => s.busTotal > 0)
   const allBusIds = busOptions.map((s) => s.busId)
@@ -138,6 +148,78 @@ export function EventTickets({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [busSelection])
 
+  useEffect(() => {
+    let cancelled = false
+    let inFlight = false
+    let lastSeq: string | null = null
+
+    const tick = async () => {
+      if (cancelled || inFlight) return
+      inFlight = true
+      try {
+        const q = lastSeq ? `?since=${encodeURIComponent(lastSeq)}` : ''
+        const res = await fetch(`/api/events/${eventId}/attendance${q}`, { cache: 'no-store' })
+        inFlight = false
+        if (!res.ok || cancelled) return
+        const data = (await res.json().catch(() => null)) as {
+          attended?: number
+          total?: number
+          perBus?: Record<string, { attended?: number; total?: number }>
+          seq?: string | null
+          new?: { participantId?: string; busId?: string }[]
+        } | null
+        if (!data) return
+
+        const seq = typeof data.seq === 'string' ? data.seq : null
+        if (seq !== lastSeq) {
+          if (lastSeq !== null && seq === null) {
+            setLivePresent((prev) => Object.fromEntries(Object.keys(prev).map((k) => [k, new Set<string>()])))
+          } else if (seq !== null && Array.isArray(data.new) && data.new.length > 0) {
+            const deltas = data.new
+            setLivePresent((prev) => {
+              const next: Record<string, Set<string>> = {}
+              for (const k of Object.keys(prev)) next[k] = new Set(prev[k])
+              for (const d of deltas) {
+                if (typeof d?.participantId === 'string' && typeof d?.busId === 'string') {
+                  if (!next[d.busId]) next[d.busId] = new Set()
+                  next[d.busId].add(d.participantId)
+                }
+              }
+              return next
+            })
+          }
+          lastSeq = seq
+        }
+
+        if (typeof data.attended === 'number') setLiveAttended(data.attended)
+        if (typeof data.total === 'number') setLiveTotal(data.total)
+        const perBus = data.perBus
+        if (perBus) {
+          setLivePerBus((prev) => {
+            const next = { ...prev }
+            for (const [busId, c] of Object.entries(perBus)) {
+              next[busId] = {
+                attended: c.attended ?? prev[busId]?.attended ?? 0,
+                total: c.total ?? prev[busId]?.total ?? 0,
+              }
+            }
+            return next
+          })
+        }
+      } catch {
+        inFlight = false
+      }
+    }
+
+    tick()
+    const timer = setInterval(tick, 3000)
+    return () => {
+      cancelled = true
+      clearInterval(timer)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId])
+
   const setFilter = (ids: string[]) => {
     setBusSelection(ids)
     setMultiOpen(false)
@@ -156,7 +238,7 @@ export function EventTickets({
   const clearBuses = () => setFilter([])
 
   // Persentase kehadiran untuk progress bar pada kartu "Hadir".
-  const attendPct = total > 0 ? Math.min(100, Math.round((attended / total) * 100)) : 0
+  const attendPct = liveTotal > 0 ? Math.min(100, Math.round((liveAttended / liveTotal) * 100)) : 0
 
   // Kosongkan pilihan tanpa menutup panel, dipakai kartu "Semua Bus" di dalam grid.
   const showAllBuses = () => {
@@ -273,7 +355,7 @@ export function EventTickets({
                 <Users size={18} />
               </span>
               <p className="mt-2.5 text-2xl font-black tabular-nums tracking-tight text-[#0d2850] md:text-3xl">
-                {total}
+                {liveTotal}
               </p>
               <p className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[#9aa3af]">Peserta</p>
             </div>
@@ -287,7 +369,7 @@ export function EventTickets({
                 <BadgeCheck size={18} />
               </span>
               <p className="mt-2.5 text-2xl font-black tabular-nums tracking-tight text-emerald-600 md:text-3xl">
-                {attended}
+                {liveAttended}
               </p>
               <p className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[#9aa3af]">Hadir</p>
               <div className="mt-2.5 h-1 w-full overflow-hidden rounded-full bg-emerald-100">
@@ -539,28 +621,36 @@ export function EventTickets({
                         <span className="truncate">{section.busName}</span>
                       </p>
                       <span className="shrink-0 rounded-full border border-[#f5b915]/30 bg-[#f5b915]/12 px-2.5 py-0.5 text-[11px] font-bold tabular-nums text-[#f7dda1]">
-                        {section.busAttended}/{section.busTotal} hadir
+                        {(livePerBus[section.busId]?.attended ?? section.busAttended)}/{section.busTotal} hadir
                       </span>
                     </div>
                     <div className="divide-y divide-[#f0f3f6]">
-                      {shown.map((p) => (
-                        <div
-                          key={p.id}
-                          className="flex items-center gap-x-4 px-4 py-2.5 text-sm transition-colors duration-150 hover:bg-[#f7fafd]"
-                        >
-                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#eef3fb] text-[11px] font-bold tabular-nums text-[#163d78]">
-                            {p.order}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => searchRef.current?.search(p.name, p.token)}
-                            title={`Cari ${p.name}`}
-                            className="min-w-0 flex-1 cursor-pointer truncate text-left font-semibold text-[#1b3555] underline-offset-2 transition-colors duration-150 hover:text-[#163d78] hover:underline"
+                      {shown.map((p) => {
+                        const isPresent = p.present || (livePresent[section.busId]?.has(p.id) ?? false)
+                        return (
+                          <div
+                            key={p.id}
+                            className={`flex items-center gap-x-4 px-4 py-2.5 text-sm transition-colors duration-150 hover:bg-[#f7fafd] ${isPresent ? 'bg-[#f4fbf6]' : ''}`}
                           >
-                            {p.name}
-                          </button>
-                        </div>
-                      ))}
+                            <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold tabular-nums ${isPresent ? 'bg-emerald-100 text-emerald-600' : 'bg-[#eef3fb] text-[#163d78]'}`}>
+                              {p.order}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => searchRef.current?.search(p.name, p.token)}
+                              title={`Cari ${p.name}`}
+                              className="min-w-0 flex-1 cursor-pointer truncate text-left font-semibold text-[#1b3555] underline-offset-2 transition-colors duration-150 hover:text-[#163d78] hover:underline"
+                            >
+                              {p.name}
+                            </button>
+                            {isPresent && (
+                              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-600">
+                                <BadgeCheck size={12} /> Hadir
+                              </span>
+                            )}
+                          </div>
+                        )
+                      })}
 
                       {loading && isExpanded && !cache && (
                         <p className="bg-[#fbfcfd] px-4 py-2.5 text-xs font-semibold text-[#657080]">

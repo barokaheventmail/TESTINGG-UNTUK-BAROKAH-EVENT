@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
       eventId,
       ...(busIds.length ? { busId: { in: busIds } } : {}),
     },
-    select: { id: true, busId: true, order: true, name: true, token: true },
+    select: { id: true, busId: true, order: true, name: true, token: true, scannedAt: true },
     orderBy: { order: 'asc' },
   })
 
@@ -49,6 +49,7 @@ export async function GET(request: NextRequest) {
       order: p.order,
       name: p.name,
       token: p.token,
+      present: p.scannedAt !== null,
     })),
   }))
 

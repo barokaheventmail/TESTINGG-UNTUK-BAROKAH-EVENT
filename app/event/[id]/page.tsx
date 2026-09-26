@@ -28,7 +28,7 @@ export default async function EventPage({ params, searchParams }: { params: Prom
     event.buses.map((bus) =>
       prisma.participant.findMany({
         where: { eventId: id, busId: bus.id },
-        select: { id: true, order: true, name: true, token: true },
+        select: { id: true, order: true, name: true, token: true, scannedAt: true },
         orderBy: { order: 'asc' },
         take: LIST_LIMIT + 1,
       }),
@@ -53,7 +53,7 @@ export default async function EventPage({ params, searchParams }: { params: Prom
     busName: s.bus.name,
     participants: s.participants
       .slice(0, LIST_LIMIT)
-      .map((p) => ({ id: p.id, order: p.order, name: p.name, token: p.token })),
+      .map((p) => ({ id: p.id, order: p.order, name: p.name, token: p.token, present: p.scannedAt !== null })),
     busTotal: s.total,
     busAttended: s.attended,
   }))
