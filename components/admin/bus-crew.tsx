@@ -2,12 +2,12 @@
 
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Bus, Check, ChevronDown, KeyRound, Loader2, Pencil, Phone, Plus, Search, Trash2, User as UserIcon, X } from 'lucide-react'
+import { Bus, Check, ChevronDown, ImagePlus, KeyRound, Loader2, Pencil, Phone, Plus, Search, Trash2, User as UserIcon, X } from 'lucide-react'
 
 export type BusWorkerData = {
   id: string
   order: number
-  user: { id: string; username: string; name: string | null; phone: string | null }
+  user: { id: string; username: string; name: string | null; phone: string | null; photoUrl: string | null }
 }
 
 export type BusWithWorkersData = {
@@ -35,6 +35,19 @@ function usernameFromName(name: string): string {
     .replace(/^\.+|\.+$/g, '')
     .slice(0, 20)
   return base || 'crew'
+}
+
+/**
+ * Inisial untuk lingkaran crew yang belum punya foto: huruf pertama kata
+ * pertama, ditambah huruf pertama kata terakhir kalau namanya punya >= 2 kata
+ * ("Andi Rahmat" -> "AR", "Ardian" -> "A"). Kalau `name` kosong, jatuh ke
+ * username supaya lingkaran tidak pernah kosong.
+ */
+function initialsOf(name: string | null, username: string): string {
+  const words = (name ?? '').trim().split(/\s+/).filter(Boolean)
+  const source = words.length ? words : [username]
+  if (source.length === 1) return source[0].slice(0, 1).toUpperCase()
+  return (source[0].slice(0, 1) + source[source.length - 1].slice(0, 1)).toUpperCase()
 }
 
 const inputCls =
@@ -512,6 +525,9 @@ function WorkerRow({
   const [renaming, setRenaming] = useState(false)
   const [name, setName] = useState(worker.user.name ?? '')
   const [confirmRemove, setConfirmRemove] = useState(false)
+  const [photoOpen, setPhotoOpen] = useState(false)
+  const [photoUrl, setPhotoUrl] = useState<string | null>(worker.user.photoUrl)
+  const fileRef = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -541,13 +557,56 @@ function WorkerRow({
     setResetOpen(false)
     setRenaming(false)
     setConfirmRemove(false)
-  }, [worker.id])
+    setPhotoOpen(false)
+    setPhotoUrl(worker.user.photoUrl)
+  }, [worker.id, worker.user.photoUrl])
 
   function closeAll() {
     setMenuOpen(false)
     setEditingPhone(false)
     setResetOpen(false)
     setRenaming(false)
+    setPhotoOpen(false)
+  }
+
+  async function uploadPhoto(file: File) {
+    setBusy(true)
+    setError(null)
+    try {
+      const form = new FormData()
+      form.append('file', file)
+      const res = await fetch(`/api/admin/events/${eventId}/bus/${busId}/workers/${worker.id}/photo`, {
+        method: 'POST',
+        body: form,
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(data?.error ?? 'Gagal mengunggah foto.')
+      setPhotoUrl(data.url ?? null)
+      router.refresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Gagal mengunggah foto.')
+    } finally {
+      setBusy(false)
+      if (fileRef.current) fileRef.current.value = ''
+    }
+  }
+
+  async function removePhoto() {
+    setBusy(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/admin/events/${eventId}/bus/${busId}/workers/${worker.id}/photo`, {
+        method: 'DELETE',
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(data?.error ?? 'Gagal menghapus foto.')
+      setPhotoUrl(null)
+      router.refresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Gagal menghapus foto.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   async function savePhone() {
@@ -640,9 +699,18 @@ function WorkerRow({
   return (
     <div className="border-b border-[#eef0f3] py-2 last:border-0">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#eef3fb] text-[#1b4f9c]">
-          <UserIcon size={13} />
-        </span>
+        {photoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={photoUrl}
+            alt={worker.user.name || worker.user.username}
+            className="h-7 w-7 shrink-0 rounded-full border border-[#dfe4e8] object-cover"
+          />
+        ) : (
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#e6f4ea] text-[10px] font-bold text-[#2ca84a]">
+            {initialsOf(worker.user.name, worker.user.username)}
+          </span>
+        )}
         <div className="min-w-0 flex-1">
           <p className="truncate text-xs font-bold text-[#1b3555]">{worker.user.name || worker.user.username}</p>
           <p className="flex flex-wrap items-center gap-x-3 text-[11px] font-semibold text-[#657080]">
@@ -696,41 +764,33 @@ function WorkerRow({
               >
                 <KeyRound size={12} className="shrink-0 text-[#1b4f9c]" /> Reset Password
               </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false)
+                  setRenaming(true)
+                  setName(worker.user.name ?? '')
+                }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-bold text-[#1b3555] hover:bg-[#f4f7fb]"
+              >
+                <Pencil size={12} className="shrink-0 text-[#1b4f9c]" /> Ganti Nama
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false)
+                  setPhotoOpen(true)
+                }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-bold text-[#1b3555] hover:bg-[#f4f7fb]"
+              >
+                <ImagePlus size={12} className="shrink-0 text-[#1b4f9c]" />
+                {photoUrl ? 'Ganti Foto' : 'Tambah Foto'}
+              </button>
             </div>
           )}
         </div>
-
-        {renaming ? (
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={saveName}
-              disabled={busy || name.trim().length === 0}
-              className="rounded-full bg-[#1b4f9c] px-2.5 py-1 text-[11px] font-bold text-white hover:bg-[#143d79] disabled:opacity-60"
-            >
-              {busy ? <Loader2 size={11} className="animate-spin" /> : 'Ya, ganti'}
-            </button>
-            <button
-              type="button"
-              onClick={() => setRenaming(false)}
-              className="rounded-full px-2 py-1 text-[11px] font-bold text-[#657080] hover:bg-[#f1f3f5]"
-            >
-              Batal
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => {
-              closeAll()
-              setRenaming(true)
-              setName(worker.user.name ?? '')
-            }}
-            className="rounded-full border border-[#dfe4e8] px-2.5 py-1 text-[11px] font-bold text-[#657080] hover:bg-[#f1f3f5]"
-          >
-            Ganti Nama
-          </button>
-        )}
 
         {confirmRemove ? (
           <div className="flex items-center gap-1.5">
@@ -778,7 +838,80 @@ function WorkerRow({
             placeholder="Nama crew"
             className="w-44 rounded-full border border-[#dfe4e8] bg-white px-3 py-1.5 text-xs font-semibold outline-none placeholder:text-[#9aa3af]"
           />
+          <button
+            type="button"
+            onClick={saveName}
+            disabled={busy || name.trim().length === 0}
+            className="rounded-full bg-[#1b4f9c] px-3 py-1.5 text-[11px] font-bold text-white hover:bg-[#143d79] disabled:opacity-60"
+          >
+            {busy ? <Loader2 size={11} className="animate-spin" /> : 'Simpan'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setRenaming(false)}
+            className="rounded-full border border-[#dfe4e8] bg-white px-2.5 py-1.5 text-[11px] font-bold text-[#657080] hover:bg-[#f1f3f5]"
+          >
+            Batal
+          </button>
           <p className="text-[11px] font-semibold text-[#657080]">Nama tampilan, username tidak berubah.</p>
+        </div>
+      )}
+
+      {photoOpen && (
+        <div className="mt-1 flex flex-wrap items-center gap-3 rounded-xl bg-[#f8fafc] p-3">
+          {photoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={photoUrl}
+              alt={worker.user.name || worker.user.username}
+              className="h-20 w-20 rounded-xl border border-[#dfe4e8] object-cover"
+            />
+          ) : (
+            <span className="flex h-20 w-20 items-center justify-center rounded-xl border border-dashed border-[#cfd6de] bg-white text-lg font-bold text-[#2ca84a]">
+              {initialsOf(worker.user.name, worker.user.username)}
+            </span>
+          )}
+          <div className="flex flex-col items-start gap-2">
+            <p className="text-[11px] font-semibold text-[#657080]">JPG / PNG / WebP, maks 5 MB.</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                disabled={busy}
+                className="flex items-center gap-1.5 rounded-full bg-[#1b4f9c] px-3 py-1.5 text-[11px] font-bold text-white hover:bg-[#143d79] disabled:opacity-60"
+              >
+                {busy ? <Loader2 size={12} className="animate-spin" /> : <ImagePlus size={12} />}
+                {photoUrl ? 'Ganti Foto' : 'Unggah Foto'}
+              </button>
+              {photoUrl && (
+                <button
+                  type="button"
+                  onClick={removePhoto}
+                  disabled={busy}
+                  className="flex items-center gap-1.5 rounded-full border border-red-200 bg-white px-3 py-1.5 text-[11px] font-bold text-red-600 hover:bg-red-50 disabled:opacity-60"
+                >
+                  <Trash2 size={12} /> Hapus Foto
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setPhotoOpen(false)}
+                className="rounded-full px-2 py-1.5 text-[11px] font-bold text-[#657080] hover:bg-[#f1f3f5]"
+              >
+                Batal
+              </button>
+            </div>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) uploadPhoto(file)
+              }}
+            />
+          </div>
         </div>
       )}
 

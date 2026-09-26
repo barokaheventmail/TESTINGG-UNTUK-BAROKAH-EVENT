@@ -1,9 +1,25 @@
+import { rm } from 'fs/promises'
+import { join, resolve } from 'path'
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdminSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
 
 type Params = { params: Promise<{ id: string; busId: string; workerId: string }> }
+
+const CREW_UPLOAD_URL_PREFIX = '/uploads/crew/'
+
+/**
+ * Saat crew benar-benar dihapus (bukan sekadar dilepas dari satu bus), file
+ * fotonya harus ikut hilang dari disk. Kalau tidak, `uploads/crew/` akan menumpuk
+ * file untuk user yang sudah tidak ada lagi.
+ */
+async function rmCrewPhoto(url: string | null | undefined): Promise<void> {
+  if (!url || !url.startsWith(CREW_UPLOAD_URL_PREFIX)) return
+  const filename = url.slice(CREW_UPLOAD_URL_PREFIX.length)
+  if (!filename || filename.includes('/') || filename.includes('..')) return
+  await rm(join(resolve(process.cwd(), 'uploads', 'crew'), filename), { force: true })
+}
 
 export async function PATCH(request: NextRequest, { params }: Params) {
   const session = await requireAdminSession()
@@ -20,7 +36,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  const worker = await prisma.busWorker.findFirst({ where: { id: workerId, busId }, include: { bus: { select: { name: true } }, user: { select: { id: true } } } })
+  const worker = await prisma.busWorker.findFirst({ where: { id: workerId, busId, bus: { eventId: id } }, include: { bus: { select: { name: true } }, user: { select: { id: true } } } })
   if (!worker) return NextResponse.json({ error: 'Crew tidak ditemukan.' }, { status: 404 })
 
   const data: { name?: string; phone?: string | null } = {}
@@ -51,9 +67,10 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
 
   const { id, busId, workerId } = await params
 
-  const worker = await prisma.busWorker.findFirst({ where: { id: workerId, busId }, include: { bus: { select: { name: true } }, user: { select: { id: true, username: true, name: true } } } })
+  const worker = await prisma.busWorker.findFirst({ where: { id: workerId, busId, bus: { eventId: id } }, include: { bus: { select: { name: true } }, user: { select: { id: true, username: true, name: true, photoUrl: true } } } })
   if (!worker) return NextResponse.json({ error: 'Crew tidak ditemukan.' }, { status: 404 })
 
+  let userDeleted = false
   await prisma.$transaction(async (tx) => {
     await tx.activityLog.create({
       data: {
@@ -67,8 +84,12 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
     const remaining = await tx.busWorker.count({ where: { userId: worker.user.id } })
     if (remaining === 0) {
       await tx.user.delete({ where: { id: worker.user.id } })
+      userDeleted = true
     }
   })
+
+  // Akun ikut terhapus, jadi file fotonya juga tidak boleh tertinggal.
+  if (userDeleted) await rmCrewPhoto(worker.user.photoUrl).catch(() => undefined)
 
   logger.info('crew removed', {
     eventId: id,

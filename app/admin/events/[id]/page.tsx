@@ -41,7 +41,7 @@ export default async function EventDetail({
       include: {
         buses: {
           orderBy: { order: 'asc' },
-          include: { workers: { orderBy: { order: 'asc' }, include: { user: { select: { id: true, username: true, name: true, phone: true } } } } },
+          include: { workers: { orderBy: { order: 'asc' }, include: { user: { select: { id: true, username: true, name: true, phone: true, photoUrl: true } } } } },
         },
       },
     }),
@@ -82,7 +82,7 @@ export default async function EventDetail({
     workers: b.workers.map((w) => ({
       id: w.id,
       order: w.order,
-      user: { id: w.user.id, username: w.user.username, name: w.user.name, phone: w.user.phone },
+      user: { id: w.user.id, username: w.user.username, name: w.user.name, phone: w.user.phone, photoUrl: w.user.photoUrl },
     })),
   }))
 

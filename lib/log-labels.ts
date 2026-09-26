@@ -22,6 +22,15 @@ const ACTION_GROUP: Record<string, LogGroup> = {
   'bus.create': 'Armada',
   'bus.update': 'Armada',
   'bus.delete': 'Armada',
+  'busCrew.create': 'Armada',
+  'busCrew.update': 'Armada',
+  'busCrew.remove': 'Armada',
+  'busCrew.generate': 'Armada',
+  'busCrew.resetPassword': 'Armada',
+  'busCrew.resetPasswords': 'Armada',
+  'busCrew.deleteAccounts': 'Armada',
+  'busCrew.photo': 'Armada',
+  'busCrew.photoRemove': 'Armada',
   'participant.create': 'Peserta',
   'participant.update': 'Peserta',
   'participant.delete': 'Peserta',
@@ -64,6 +73,15 @@ export const LOG_ACTIONS: { group: LogGroup; actions: { value: string; label: st
       { value: 'bus.create', label: 'Tambah bus' },
       { value: 'bus.update', label: 'Ubah bus' },
       { value: 'bus.delete', label: 'Hapus bus' },
+      { value: 'busCrew.create', label: 'Tambah crew' },
+      { value: 'busCrew.update', label: 'Ubah crew' },
+      { value: 'busCrew.remove', label: 'Lepas crew' },
+      { value: 'busCrew.generate', label: 'Generate crew' },
+      { value: 'busCrew.resetPassword', label: 'Reset password crew' },
+      { value: 'busCrew.resetPasswords', label: 'Reset password semua crew' },
+      { value: 'busCrew.deleteAccounts', label: 'Hapus akun crew' },
+      { value: 'busCrew.photo', label: 'Ganti foto crew' },
+      { value: 'busCrew.photoRemove', label: 'Hapus foto crew' },
     ],
   },
   {
@@ -157,6 +175,56 @@ export function formatLogDetail(action: string, detail: LogDetail): string {
       const n = getValue(detail, 'name')
       const p = detail && typeof detail.participants === 'number' ? detail.participants : null
       return `Bus "${n ?? '???'}" dihapus${p !== null ? ` (${p.toLocaleString('id-ID')} peserta)` : ''}`
+    }
+    case 'busCrew.create': {
+      const n = getValue(detail, 'name') ?? getValue(detail, 'username') ?? '???'
+      const b = getValue(detail, 'bus')
+      return `Crew ${n} ditambahkan di ${b ?? '???'}`
+    }
+    case 'busCrew.update': {
+      const u = getValue(detail, 'username') ?? '???'
+      const b = getValue(detail, 'bus')
+      const bag: string[] = []
+      if (typeof (detail as Record<string, unknown> | null)?.name === 'string') {
+        bag.push(`nama: ${getValue(detail, 'name')}`)
+      }
+      if ('phone' in (detail ?? {})) {
+        const ph = getValue(detail, 'phone')
+        bag.push(`WA: ${ph ?? 'dikosongkan'}`)
+      }
+      return `Crew ${u} diubah di ${b ?? '???'}${bag.length ? ` (${bag.join(', ')})` : ''}`
+    }
+    case 'busCrew.remove': {
+      const n = getValue(detail, 'name') ?? getValue(detail, 'username') ?? '???'
+      const b = getValue(detail, 'bus')
+      return `Crew ${n} dilepas dari ${b ?? '???'}`
+    }
+    case 'busCrew.generate': {
+      const c = getValue(detail, 'created')
+      const b = getValue(detail, 'buses')
+      const px = getValue(detail, 'prefix')
+      return `Generate ${(typeof c === 'number' ? c : 0).toLocaleString('id-ID')} crew di ${(typeof b === 'number' ? b : 0).toLocaleString('id-ID')} bus${px ? ` (prefix ${px})` : ''}`
+    }
+    case 'busCrew.resetPassword': {
+      const u = getValue(detail, 'username') ?? '???'
+      return `Reset password crew ${u}`
+    }
+    case 'busCrew.resetPasswords': {
+      const n = getValue(detail, 'count')
+      return `Reset password ${(typeof n === 'number' ? n : 0).toLocaleString('id-ID')} crew`
+    }
+    case 'busCrew.deleteAccounts': {
+      const n = getValue(detail, 'count')
+      const u = getValue(detail, 'unlinked')
+      return `Menghapus ${(typeof n === 'number' ? n : 0).toLocaleString('id-ID')} akun crew${typeof u === 'number' && u > 0 ? ` (${u.toLocaleString('id-ID')} di luar event)` : ''}`
+    }
+    case 'busCrew.photo': {
+      const u = getValue(detail, 'username') ?? '???'
+      return `Foto crew ${u} diunggah`
+    }
+    case 'busCrew.photoRemove': {
+      const u = getValue(detail, 'username') ?? '???'
+      return `Foto crew ${u} dihapus`
     }
     case 'participant.create': {
       const n = getValue(detail, 'name')
