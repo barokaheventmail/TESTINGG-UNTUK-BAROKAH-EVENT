@@ -503,13 +503,52 @@ function WorkerRow({
   worker: BusWorkerData
 }) {
   const router = useRouter()
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
   const [editingPhone, setEditingPhone] = useState(false)
   const [phone, setPhone] = useState(worker.user.phone ?? '')
   const [resetOpen, setResetOpen] = useState(false)
   const [password, setPassword] = useState('')
+  const [renaming, setRenaming] = useState(false)
+  const [name, setName] = useState(worker.user.name ?? '')
   const [confirmRemove, setConfirmRemove] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Tutup dropdown Edit saat klik di luar atau tekan Escape, supaya tidak
+  // menghalangi baris lain dan tetap berperilaku seperti menu pada umumnya.
+  useEffect(() => {
+    if (!menuOpen) return
+    function onDocDown(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false)
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setMenuOpen(false)
+    }
+    document.addEventListener('mousedown', onDocDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDocDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [menuOpen])
+
+  // Kalau baris ini lenyap karena dihapus, form yang masih terbuka tidak boleh
+  // menggantung dengan state lama.
+  useEffect(() => {
+    setMenuOpen(false)
+    setEditingPhone(false)
+    setResetOpen(false)
+    setRenaming(false)
+    setConfirmRemove(false)
+  }, [worker.id])
+
+  function closeAll() {
+    setMenuOpen(false)
+    setEditingPhone(false)
+    setResetOpen(false)
+    setRenaming(false)
+  }
 
   async function savePhone() {
     setBusy(true)
@@ -533,6 +572,28 @@ function WorkerRow({
     }
   }
 
+  async function saveName() {
+    setBusy(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/admin/events/${eventId}/bus/${busId}/workers/${worker.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim() }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => null)
+        throw new Error(data?.error ?? 'Gagal mengganti nama crew.')
+      }
+      setRenaming(false)
+      router.refresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Gagal mengganti nama crew.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function removeWorker() {
     setBusy(true)
     setError(null)
@@ -540,11 +601,11 @@ function WorkerRow({
       const res = await fetch(`/api/admin/events/${eventId}/bus/${busId}/workers/${worker.id}`, { method: 'DELETE' })
       if (!res.ok) {
         const data = await res.json().catch(() => null)
-        throw new Error(data?.error ?? 'Gagal melepas crew.')
+        throw new Error(data?.error ?? 'Gagal menghapus crew.')
       }
       router.refresh()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Gagal melepas crew.')
+      setError(err instanceof Error ? err.message : 'Gagal menghapus crew.')
     } finally {
       setBusy(false)
     }
@@ -573,6 +634,9 @@ function WorkerRow({
     }
   }
 
+  const menuBtn =
+    'rounded-full border border-[#dfe4e8] px-2.5 py-1 text-[11px] font-bold text-[#1b4f9c] hover:bg-[#eef3fb]'
+
   return (
     <div className="border-b border-[#eef0f3] py-2 last:border-0">
       <div className="flex flex-wrap items-center gap-2">
@@ -590,20 +654,84 @@ function WorkerRow({
             </span>
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => { setEditingPhone(true); setPhone(worker.user.phone ?? '') }}
-          className="rounded-full border border-[#dfe4e8] px-2.5 py-1 text-[11px] font-bold text-[#657080] hover:bg-[#f1f3f5]"
-        >
-          <Phone size={11} className="inline" /> WA
-        </button>
-        <button
-          type="button"
-          onClick={() => setResetOpen((v) => !v)}
-          className="rounded-full border border-[#dfe4e8] px-2.5 py-1 text-[11px] font-bold text-[#1b4f9c] hover:bg-[#eef3fb]"
-        >
-          <KeyRound size={11} className="inline" /> Reset PW
-        </button>
+
+        <div className="relative shrink-0" ref={menuRef}>
+          <button
+            type="button"
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-expanded={menuOpen}
+            aria-haspopup="menu"
+            className={menuBtn}
+          >
+            <Pencil size={11} className="inline" /> Edit{' '}
+            <ChevronDown size={11} className={`inline transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {menuOpen && (
+            <div
+              role="menu"
+              className="absolute right-0 top-full z-20 mt-1 w-44 overflow-hidden rounded-xl border border-[#e4e8ec] bg-white py-1 shadow-[0_12px_28px_-14px_rgba(16,32,58,0.45)]"
+            >
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false)
+                  setEditingPhone(true)
+                  setPhone(worker.user.phone ?? '')
+                }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-bold text-[#1b3555] hover:bg-[#f4f7fb]"
+              >
+                <Phone size={12} className="shrink-0 text-[#1b4f9c]" /> Ubah Nomor WA
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false)
+                  setResetOpen(true)
+                  setPassword('')
+                }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-bold text-[#1b3555] hover:bg-[#f4f7fb]"
+              >
+                <KeyRound size={12} className="shrink-0 text-[#1b4f9c]" /> Reset Password
+              </button>
+            </div>
+          )}
+        </div>
+
+        {renaming ? (
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={saveName}
+              disabled={busy || name.trim().length === 0}
+              className="rounded-full bg-[#1b4f9c] px-2.5 py-1 text-[11px] font-bold text-white hover:bg-[#143d79] disabled:opacity-60"
+            >
+              {busy ? <Loader2 size={11} className="animate-spin" /> : 'Ya, ganti'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setRenaming(false)}
+              className="rounded-full px-2 py-1 text-[11px] font-bold text-[#657080] hover:bg-[#f1f3f5]"
+            >
+              Batal
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              closeAll()
+              setRenaming(true)
+              setName(worker.user.name ?? '')
+            }}
+            className="rounded-full border border-[#dfe4e8] px-2.5 py-1 text-[11px] font-bold text-[#657080] hover:bg-[#f1f3f5]"
+          >
+            Ganti Nama
+          </button>
+        )}
+
         {confirmRemove ? (
           <div className="flex items-center gap-1.5">
             <button
@@ -612,30 +740,77 @@ function WorkerRow({
               disabled={busy}
               className="rounded-full bg-red-600 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-red-700 disabled:opacity-60"
             >
-              {busy ? <Loader2 size={11} className="animate-spin" /> : 'Ya, lepas'}
+              {busy ? <Loader2 size={11} className="animate-spin" /> : 'Ya, hapus'}
             </button>
-            <button type="button" onClick={() => setConfirmRemove(false)} className="rounded-full px-2 py-1 text-[11px] font-bold text-[#657080] hover:bg-[#f1f3f5]">
+            <button
+              type="button"
+              onClick={() => setConfirmRemove(false)}
+              className="rounded-full px-2 py-1 text-[11px] font-bold text-[#657080] hover:bg-[#f1f3f5]"
+            >
               Batal
             </button>
           </div>
         ) : (
           <button
             type="button"
-            onClick={() => setConfirmRemove(true)}
+            onClick={() => {
+              closeAll()
+              setConfirmRemove(true)
+            }}
             className="rounded-full border border-red-200 px-2.5 py-1 text-[11px] font-bold text-red-600 hover:bg-red-50"
           >
-            <Trash2 size={11} className="inline" /> Lepas
+            <Trash2 size={11} className="inline" /> Hapus
           </button>
         )}
       </div>
 
+      {renaming && (
+        <div className="mt-1 flex flex-wrap items-center gap-2 rounded-xl bg-[#f8fafc] p-2">
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                saveName()
+              }
+            }}
+            placeholder="Nama crew"
+            className="w-44 rounded-full border border-[#dfe4e8] bg-white px-3 py-1.5 text-xs font-semibold outline-none placeholder:text-[#9aa3af]"
+          />
+          <p className="text-[11px] font-semibold text-[#657080]">Nama tampilan, username tidak berubah.</p>
+        </div>
+      )}
+
       {editingPhone && (
         <div className="mt-1 flex flex-wrap items-center gap-2 rounded-xl bg-[#f8fafc] p-2">
-          <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="No WA" className="w-44 rounded-full border border-[#dfe4e8] bg-white px-3 py-1.5 text-xs font-semibold outline-none placeholder:text-[#9aa3af]" />
-          <button type="button" onClick={savePhone} disabled={busy} className="rounded-full bg-[#1b4f9c] px-3 py-1.5 text-[11px] font-bold text-white hover:bg-[#143d79] disabled:opacity-60">
+          <input
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                savePhone()
+              }
+            }}
+            placeholder="No WA"
+            className="w-44 rounded-full border border-[#dfe4e8] bg-white px-3 py-1.5 text-xs font-semibold outline-none placeholder:text-[#9aa3af]"
+          />
+          <button
+            type="button"
+            onClick={savePhone}
+            disabled={busy}
+            className="rounded-full bg-[#1b4f9c] px-3 py-1.5 text-[11px] font-bold text-white hover:bg-[#143d79] disabled:opacity-60"
+          >
             {busy ? <Loader2 size={11} className="animate-spin" /> : 'Simpan'}
           </button>
-          <button type="button" onClick={() => setEditingPhone(false)} className="rounded-full border border-[#dfe4e8] bg-white px-2.5 py-1.5 text-[11px] font-bold text-[#657080] hover:bg-[#f1f3f5]">Batal</button>
+          <button
+            type="button"
+            onClick={() => setEditingPhone(false)}
+            className="rounded-full border border-[#dfe4e8] bg-white px-2.5 py-1.5 text-[11px] font-bold text-[#657080] hover:bg-[#f1f3f5]"
+          >
+            Batal
+          </button>
         </div>
       )}
 
@@ -663,6 +838,12 @@ function WorkerRow({
             {busy ? <Loader2 size={11} className="animate-spin" /> : 'Simpan'}
           </button>
         </div>
+      )}
+
+      {confirmRemove && (
+        <p className="mt-1 w-full text-[11px] font-semibold text-red-600">
+          Crew dilepas dari bus ini. Akun ikut terhapus hanya kalau dia tidak jadi crew di bus lain.
+        </p>
       )}
 
       {error && <p className="mt-1 w-full text-[11px] font-semibold text-red-600">{error}</p>}
