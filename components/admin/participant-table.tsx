@@ -6,6 +6,7 @@ import { formatTanggalPendek } from '@/lib/dates'
 import { PARTICIPANTS_CHANGED_EVENT } from '@/lib/events'
 import { EditParticipant } from './edit-participant'
 import { DeleteParticipant } from './delete-participant'
+import { ToggleAttendance } from './toggle-attendance'
 
 export type RowParticipant = {
   id: string
@@ -273,16 +274,19 @@ export function ParticipantTable({
                         {hasAny.room && <td className="px-3 py-2.5 text-[#657080]">{p.room || '—'}</td>}
                         {hasAny.vw && <td className="px-3 py-2.5 text-[#657080]">{p.vw || '—'}</td>}
                         <td className="px-3 py-2.5">
-                          {p.scannedAt ? (
-                            <div className="inline-flex items-center gap-1 rounded-full bg-[#e6f4ea] px-2.5 py-1 text-[11px] font-bold text-[#2ca84a]">
-                              <BadgeCheck size={12} />
-                              Hadir {p.scannedBy ? ` · ${p.scannedBy.name ?? p.scannedBy.username}` : ''}
-                            </div>
-                          ) : (
-                            <span className="rounded-full bg-[#fff7e0] px-2.5 py-1 text-[11px] font-bold text-[#b98a12]">
-                              Belum
-                            </span>
-                          )}
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {p.scannedAt ? (
+                              <div className="inline-flex items-center gap-1 rounded-full bg-[#e6f4ea] px-2.5 py-1 text-[11px] font-bold text-[#2ca84a]">
+                                <BadgeCheck size={12} />
+                                Hadir {p.scannedBy ? ` · ${p.scannedBy.name ?? p.scannedBy.username}` : ''}
+                              </div>
+                            ) : (
+                              <span className="rounded-full bg-[#fff7e0] px-2.5 py-1 text-[11px] font-bold text-[#b98a12]">
+                                Belum
+                              </span>
+                            )}
+                            <ToggleAttendance eventId={eventId} participantId={p.id} name={p.name} attended={!!p.scannedAt} />
+                          </div>
                         </td>
                         <td className="px-3 py-2.5">
                           <div className="flex items-center justify-end">

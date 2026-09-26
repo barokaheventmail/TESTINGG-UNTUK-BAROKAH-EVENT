@@ -26,6 +26,8 @@ const ACTION_GROUP: Record<string, LogGroup> = {
   'participant.update': 'Peserta',
   'participant.delete': 'Peserta',
   'attendance.reset': 'Kehadiran',
+  'attendance.set': 'Kehadiran',
+  'attendance.clear': 'Kehadiran',
   'scan.attended': 'Scan',
   'scan.duplicate': 'Scan',
   'auth.login.success': 'Keamanan',
@@ -65,7 +67,11 @@ export const LOG_ACTIONS: { group: LogGroup; actions: { value: string; label: st
   },
   {
     group: 'Kehadiran',
-    actions: [{ value: 'attendance.reset', label: 'Reset kehadiran' }],
+    actions: [
+      { value: 'attendance.set', label: 'Tandai hadir (manual)' },
+      { value: 'attendance.clear', label: 'Batalkan hadir (manual)' },
+      { value: 'attendance.reset', label: 'Reset kehadiran' },
+    ],
   },
   {
     group: 'Scan',
@@ -154,6 +160,14 @@ export function formatLogDetail(action: string, detail: LogDetail): string {
     case 'participant.delete': {
       const n = getValue(detail, 'name')
       return `Peserta "${n ?? '???'}" dihapus`
+    }
+    case 'attendance.set': {
+      const n = getValue(detail, 'name')
+      return `${n ?? '???'} ditandai hadir (manual)`
+    }
+    case 'attendance.clear': {
+      const n = getValue(detail, 'name')
+      return `Kehadiran ${n ?? '???'} dibatalkan (manual)`
     }
     case 'attendance.reset': {
       const c =

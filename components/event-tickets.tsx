@@ -166,7 +166,7 @@ export function EventTickets({
           total?: number
           perBus?: Record<string, { attended?: number; total?: number }>
           seq?: string | null
-          new?: { participantId?: string; busId?: string }[]
+          changes?: { type?: 'add' | 'remove'; participantId?: string; busId?: string }[]
         } | null
         if (!data) return
 
@@ -174,16 +174,16 @@ export function EventTickets({
         if (seq !== lastSeq) {
           if (lastSeq !== null && seq === null) {
             setLivePresent((prev) => Object.fromEntries(Object.keys(prev).map((k) => [k, new Set<string>()])))
-          } else if (seq !== null && Array.isArray(data.new) && data.new.length > 0) {
-            const deltas = data.new
+          } else if (seq !== null && Array.isArray(data.changes) && data.changes.length > 0) {
+            const deltas = data.changes
             setLivePresent((prev) => {
               const next: Record<string, Set<string>> = {}
               for (const k of Object.keys(prev)) next[k] = new Set(prev[k])
               for (const d of deltas) {
-                if (typeof d?.participantId === 'string' && typeof d?.busId === 'string') {
-                  if (!next[d.busId]) next[d.busId] = new Set()
-                  next[d.busId].add(d.participantId)
-                }
+                if (typeof d?.participantId !== 'string' || typeof d?.busId !== 'string') continue
+                if (!next[d.busId]) next[d.busId] = new Set()
+                if (d.type === 'remove') next[d.busId].delete(d.participantId)
+                else next[d.busId].add(d.participantId)
               }
               return next
             })

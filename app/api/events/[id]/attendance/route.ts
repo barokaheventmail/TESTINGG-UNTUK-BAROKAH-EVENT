@@ -10,7 +10,7 @@ export async function GET(request: NextRequest, { params }: Params) {
 
   const event = await prisma.event.findUnique({ where: { id }, select: { id: true, status: true } })
   if (!event || event.status !== 'ACTIVE') {
-    return NextResponse.json({ attended: 0, total: 0, perBus: {}, seq: null, new: [] })
+    return NextResponse.json({ attended: 0, total: 0, perBus: {}, seq: null, changes: [] })
   }
 
   const sinceRaw = request.nextUrl.searchParams.get('since')
@@ -26,11 +26,11 @@ export async function GET(request: NextRequest, { params }: Params) {
     }),
     prisma.scanLog.findMany({
       where: {
-        status: 'attended',
+        status: { in: ['attended', 'unattended'] },
         createdAt: { gt: since ?? new Date(0) },
         participant: { eventId: id },
       },
-      select: { participantId: true, participant: { select: { busId: true } } },
+      select: { status: true, participantId: true, participant: { select: { busId: true } } },
       orderBy: { createdAt: 'asc' },
       take: 500,
     }),
@@ -45,13 +45,19 @@ export async function GET(request: NextRequest, { params }: Params) {
   const total = [...totalMap.values()].reduce((a, b) => a + b, 0)
   const attended = [...attendedMap.values()].reduce((a, b) => a + b, 0)
 
+  const changes = delta.map((l) => ({
+    type: l.status === 'attended' ? 'add' : 'remove',
+    participantId: l.participantId,
+    busId: l.participant.busId,
+  }))
+
   return NextResponse.json(
     {
       attended,
       total,
       perBus,
       seq: latestLog?.createdAt.toISOString() ?? null,
-      new: delta.map((l) => ({ participantId: l.participantId, busId: l.participant.busId })),
+      changes,
     },
     { headers: { 'Cache-Control': 'no-store' } },
   )
