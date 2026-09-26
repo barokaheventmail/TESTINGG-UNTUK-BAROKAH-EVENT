@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
-import { ArrowLeft, Bus, CalendarDays, Download, History, MapPin, Printer, ShieldAlert } from 'lucide-react'
+import { ArrowLeft, ArrowUpRight, Bus, CalendarDays, Download, History, MapPin, Printer, ShieldAlert } from 'lucide-react'
 import { prisma } from '@/lib/db'
 import { formatWaktuLengkap } from '@/lib/dates'
 import { EditEvent } from '@/components/admin/edit-event'
@@ -293,37 +293,65 @@ export default async function EventDetail({
       )}
 
       {active === 'riwayat' && (
-        <div className="mt-5 rounded-2xl border border-[#dfe4e8] bg-white p-5">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h2 className="flex items-center gap-1.5 text-sm font-bold text-[#1b3555]">
-                <History size={15} /> Riwayat Event
-              </h2>
-              <p className="mt-0.5 text-xs text-[#657080]">
-                Aksi kelola event ini (import, bus, peserta, crew, reset). Scan crew tercatat di riwayat crew.
-              </p>
+        <div className="relative mt-5 overflow-hidden rounded-2xl border border-[#ece3cd] bg-white shadow-[0_18px_44px_-28px_rgba(27,53,85,0.5)]">
+          <span
+            aria-hidden
+            className="absolute inset-x-0 top-0 h-0.5 bg-[linear-gradient(90deg,#f9dc8c_0%,#f5b915_50%,#d9a40c_100%)]"
+          />
+
+          <div className="flex flex-wrap items-start justify-between gap-4 p-5">
+            <div className="flex min-w-0 items-start gap-3.5">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[linear-gradient(140deg,#1b3555_0%,#0d2850_100%)] text-[#f5b915] shadow-[0_10px_24px_-12px_rgba(13,40,80,0.8)]">
+                <History size={19} />
+              </span>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="text-base font-bold tracking-tight text-[#1b3555]">Riwayat Event</h2>
+                  <span className="rounded-full border border-[#e8d9a8] bg-[#fffdf5] px-2 py-0.5 text-[11px] font-bold tabular-nums text-[#8a6a08]">
+                    {eventLogCount.toLocaleString('id-ID')} entri
+                  </span>
+                </div>
+                <p className="mt-1 max-w-xl text-xs leading-relaxed text-[#657080]">
+                  Jejak setiap aksi kelola event ini — import, bus, peserta, crew, hingga reset. Scan crew
+                  tercatat terpisah di riwayat crew.
+                </p>
+              </div>
             </div>
+
             <Link
               href={`/admin/logs?eventId=${event.id}`}
-              className="shrink-0 text-xs font-bold text-[#1b4f9c] hover:text-[#16407d]"
+              className="group flex shrink-0 items-center gap-1.5 rounded-full border border-[#e8d9a8] bg-[linear-gradient(180deg,#fffdf5_0%,#fff7e0_100%)] px-3.5 py-2 text-xs font-bold text-[#8a6a08] shadow-[0_6px_16px_-10px_rgba(138,106,8,0.7)] transition-all duration-200 hover:border-[#d9c07a] hover:shadow-[0_10px_22px_-12px_rgba(138,106,8,0.8)] active:scale-[0.97]"
             >
-              Lihat riwayat lengkap →
+              Lihat riwayat lengkap
+              <ArrowUpRight
+                size={13}
+                className="transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+              />
             </Link>
           </div>
 
           {eventLogs.length === 0 ? (
-            <p className="mt-4 text-xs text-[#9aa3af]">Belum ada aktivitas kelola untuk event ini.</p>
+            <div className="mx-5 mb-5 flex flex-col items-center gap-2 rounded-xl border border-dashed border-[#e6dcc2] bg-[linear-gradient(180deg,#fcfbf6_0%,#ffffff_100%)] px-4 py-10 text-center">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#fff7e0] text-[#b98a12]">
+                <History size={17} />
+              </span>
+              <p className="text-xs font-bold text-[#1b3555]">Belum ada aktivitas</p>
+              <p className="max-w-xs text-[11px] leading-relaxed text-[#9aa3af]">
+                Riwayat akan terisi sendiri begitu ada import, bus, peserta, atau crew yang dikelola.
+              </p>
+            </div>
           ) : (
-            <>
-              <ul className="mt-3 max-h-[420px] divide-y divide-[#eef1f4] overflow-y-auto">
+            <div className="mx-5 mb-5 overflow-hidden rounded-xl border border-[#eee6d2] bg-[linear-gradient(180deg,#fcfbf6_0%,#ffffff_60%)]">
+              <ul className="max-h-[420px] divide-y divide-[#f0ece0] overflow-y-auto">
                 {riwayatList}
               </ul>
-              {eventLogCount > eventLogs.length && (
-                <p className="mt-3 text-xs font-semibold text-[#657080]">
-                  …dan {eventLogCount - eventLogs.length} entri lainnya.
-                </p>
-              )}
-            </>
+            </div>
+          )}
+
+          {eventLogCount > eventLogs.length && (
+            <p className="mx-5 mb-5 rounded-full border border-[#eee6d2] bg-[#fffdf5] px-3.5 py-2 text-center text-[11px] font-bold text-[#8a6a08]">
+              Menampilkan {eventLogs.length} terbaru · {eventLogCount - eventLogs.length} entri lainnya
+            </p>
           )}
         </div>
       )}

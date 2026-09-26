@@ -16,5 +16,6 @@ node_modules
 .DS_Store
 # Build artifacts
 *.tsbuildinfo
-# User uploads
-uploads/
+# User uploads — hanya folder di root. Tanda `/` di depan sengaja supaya
+# `app/uploads/` (route handler penyaji file) tetap ikut ter-commit.
+/uploads/
