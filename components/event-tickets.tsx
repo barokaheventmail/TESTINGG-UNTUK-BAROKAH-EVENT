@@ -282,12 +282,12 @@ export function EventTickets({
             />
             <div
               aria-hidden
-              className="absolute inset-0 bg-gradient-to-t from-[#071e3d] via-[#0d2850]/90 to-[#0d2850]/75"
+              className="absolute inset-0 bg-gradient-to-t from-[#071e3d]/85 via-[#0d2850]/25 to-[#0d2850]/10"
             />
           </>
         )}
 
-        <div className="relative px-6 py-9 text-white md:px-10 md:py-12">
+        <div className="relative px-6 py-9 text-white md:px-10 md:py-12 drop-shadow-[0_2px_10px_rgba(9,32,74,0.85)]">
           <div className="flex items-center gap-3">
             <span className="h-px w-8 shrink-0 bg-gradient-to-r from-[#f9dc8c] to-[#d9a40c]" />
             <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#f5d79a]">
