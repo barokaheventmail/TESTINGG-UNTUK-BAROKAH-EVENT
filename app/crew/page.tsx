@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { History, MessageCircle } from 'lucide-react'
+import { CircleUserRound, MessageCircle } from 'lucide-react'
 import { requireCrewSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { redirect } from 'next/navigation'
@@ -31,16 +31,18 @@ export default async function CrewPage() {
       <SessionGuard scope="CREW" />
       <header className="border-b border-white/10 px-4 py-5 text-center">
         <div className="mx-auto flex max-w-md items-center justify-between">
-          <div>
-            <p className="text-left text-[11px] font-bold uppercase tracking-widest text-white/50">Barokah Tour and Travel</p>
-            <h1 className="mt-1 text-left text-xl font-bold text-white">Scan QR Absensi</h1>
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-left text-[11px] font-bold uppercase tracking-widest text-white/50">Barokah Tour and Travel</p>
+              <h1 className="mt-1 truncate text-left text-xl font-bold text-white">Scan QR Absensi</h1>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <Link
-              href="/crew/riwayat"
+              href="/crew/profil"
               className="flex items-center gap-1.5 rounded-full bg-white/10 px-4 py-2 text-xs font-bold text-white transition-colors duration-200 hover:bg-white/20"
             >
-              <History size={13} /> Riwayat
+              <CircleUserRound size={13} /> Profile <span className="hidden min-[380px]:inline">&amp; Riwayat</span>
             </Link>
             <LogoutButton variant="dark" scope="CREW" />
           </div>

@@ -23,7 +23,15 @@ export async function GET(request: NextRequest) {
       token: true,
       name: true,
       order: true,
-      bus: { select: { name: true } },
+      bus: {
+        select: {
+          name: true,
+          workers: {
+            orderBy: { order: 'asc' },
+            select: { user: { select: { name: true, username: true, phone: true, photoUrl: true } } },
+          },
+        },
+      },
       event: { select: { id: true, title: true, date: true } },
     },
     orderBy: [{ event: { date: 'desc' } }, { order: 'asc' }],
@@ -33,14 +41,18 @@ export async function GET(request: NextRequest) {
   logger.info('public search', { q, hits: matches.length })
 
   return NextResponse.json({
-    matches: matches.map((p) => ({
-      eventId: p.event.id,
-      token: p.token,
-      name: p.name,
-      order: p.order,
-      busName: p.bus.name,
-      eventTitle: p.event.title,
-      eventDate: p.event.date.toISOString(),
-    })),
+    matches: matches.map((p) => {
+      const resp = p.bus.workers.find((w) => w.user.phone)?.user
+      return {
+        eventId: p.event.id,
+        token: p.token,
+        name: p.name,
+        order: p.order,
+        busName: p.bus.name,
+        eventTitle: p.event.title,
+        eventDate: p.event.date.toISOString(),
+        crew: resp ? { name: resp.name ?? resp.username, phone: resp.phone, photoUrl: resp.photoUrl } : null,
+      }
+    }),
   })
 }

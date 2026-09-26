@@ -2,8 +2,15 @@
 
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { BadgeCheck, QrCode, Search, SearchX, Ticket } from 'lucide-react'
+import { BadgeCheck, MessageCircle, QrCode, Search, SearchX, Ticket, UserRound } from 'lucide-react'
 import { formatTanggalPendek } from '@/lib/dates'
+import { waLink } from '@/lib/wa'
+
+export type CrewInfo = {
+  name: string
+  phone: string | null
+  photoUrl: string | null
+}
 
 export type SearchMatch = {
   eventId: string
@@ -13,6 +20,7 @@ export type SearchMatch = {
   busName: string
   eventTitle: string
   eventDate: string
+  crew: CrewInfo | null
 }
 
 export type TicketSearchHandle = {
@@ -256,6 +264,46 @@ export const TicketSearch = forwardRef<
           </div>
         </div>
       )}
+
+      {selected?.crew && selected.crew.phone && (() => {
+        const wa = waLink(selected.crew.phone)
+        if (!wa) return null
+        const initial = (selected.crew.name.trim()[0] ?? 'C').toUpperCase()
+        return (
+          <div className="animate-fade-up mt-3 overflow-hidden rounded-2xl border border-[#dfe4e8] bg-white shadow-lg">
+            <div className="flex items-center gap-2 border-l-4 border-[#2ca84a] bg-[#e6f4ea] px-5 py-3">
+              <MessageCircle className="shrink-0 text-[#2ca84a]" size={14} />
+              <p className="text-xs font-bold uppercase tracking-wide text-[#1b3555]">Hubungi Panitia</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3 px-5 py-4">
+                {selected.crew.photoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={selected.crew.photoUrl}
+                    alt={`Foto ${selected.crew.name}`}
+                    className="h-12 w-12 shrink-0 rounded-full border border-[#edf0f3] object-cover"
+                  />
+                ) : (
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(135deg,#1b4f9c,#163d78)] text-sm font-bold text-white">
+                    {initial}
+                  </span>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-bold text-[#1b3555]">{selected.crew.name}</p>
+                  <p className="truncate text-xs text-[#657080]">Penanggung jawab armada {selected.busName}</p>
+                </div>
+                <a
+                  href={wa}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex shrink-0 items-center gap-1.5 rounded-full bg-[#25d366] px-4 py-2.5 text-xs font-bold text-white transition-colors duration-200 hover:bg-[#1eb055] active:scale-[0.98]"
+                >
+                  <MessageCircle size={15} /> Hubungi WA
+                </a>
+              </div>
+          </div>
+        )
+      })()}
 
       {notFound && (
         <div className="animate-fade-up mt-4 flex flex-col gap-3 rounded-2xl border border-[#dfe4e8] bg-white p-5 text-left shadow-lg sm:flex-row sm:items-center sm:justify-between">
