@@ -3,18 +3,25 @@
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { Check, Copy, KeyRound, Loader2, ShieldAlert, X } from 'lucide-react'
+import { useModal } from '@/components/admin/use-modal'
 
 type ResetRow = { username: string; name: string | null; buses: string[]; password: string }
 
 export function ResetCrewPasswordsButton({
   eventId,
   totalCrew,
+  mode = 'button',
+  open: controlledOpen,
+  onOpenChange,
 }: {
   eventId: string
   totalCrew: number
+  mode?: 'button' | 'modal'
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }) {
   const router = useRouter()
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useModal(controlledOpen, onOpenChange)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [reset, setReset] = useState<ResetRow[] | null>(null)
@@ -58,19 +65,21 @@ export function ResetCrewPasswordsButton({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => {
-          setReset(null)
-          setError(null)
-          setOpen(true)
-        }}
-        disabled={totalCrew === 0}
-        title={totalCrew === 0 ? 'Belum ada crew di event ini.' : 'Reset password semua crew sekaligus.'}
-        className="flex items-center gap-1.5 rounded-full border border-[#dfe4e8] bg-white px-4 py-2.5 text-xs font-bold text-[#657080] transition-colors duration-200 hover:bg-[#f1f3f5] active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        <KeyRound size={13} /> Reset Password Crew
-      </button>
+      {mode === 'button' && (
+        <button
+          type="button"
+          onClick={() => {
+            setReset(null)
+            setError(null)
+            setOpen(true)
+          }}
+          disabled={totalCrew === 0}
+          title={totalCrew === 0 ? 'Belum ada crew di event ini.' : 'Reset password semua crew sekaligus.'}
+          className="flex items-center gap-1.5 rounded-full border border-[#dfe4e8] bg-white px-4 py-2.5 text-xs font-bold text-[#657080] transition-colors duration-200 hover:bg-[#f1f3f5] active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <KeyRound size={13} /> Reset Password Crew
+        </button>
+      )}
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">

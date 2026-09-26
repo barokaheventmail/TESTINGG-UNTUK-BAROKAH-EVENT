@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { Check, Copy, Loader2, UserPlus, X } from 'lucide-react'
+import { useModal } from '@/components/admin/use-modal'
 
 export type GenerateBus = { id: string; name: string; workerCount: number }
 
@@ -23,14 +24,22 @@ export function GenerateCrewButton({
   eventTitle,
   defaultPrefix,
   buses,
+  mode = 'button',
+  open: controlledOpen,
+  onOpenChange,
 }: {
   eventId: string
   eventTitle: string
   defaultPrefix: string | null
   buses: GenerateBus[]
+  // 'button' = pemicunya ikut dirender. 'modal' = hanya layarnya, pemicunya
+  // dibuat oleh ActionMenu supaya seragam dengan aksi lain di menu.
+  mode?: 'button' | 'modal'
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }) {
   const router = useRouter()
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useModal(controlledOpen, onOpenChange)
   const [prefix, setPrefix] = useState(defaultPrefix ?? slugify(eventTitle))
   const [perBus, setPerBus] = useState(1)
   const [loading, setLoading] = useState(false)
@@ -79,18 +88,20 @@ export function GenerateCrewButton({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => {
-          if (defaultPrefix) setPrefix(defaultPrefix)
-          setCreated(null)
-          setError(null)
-          setOpen(true)
-        }}
-        className="flex items-center gap-1.5 rounded-full bg-[#1b4f9c] px-4 py-2.5 text-xs font-bold text-white transition-colors duration-200 hover:bg-[#143d79] active:scale-95"
-      >
-        <UserPlus size={13} /> Generate Akun Crew
-      </button>
+      {mode === 'button' && (
+        <button
+          type="button"
+          onClick={() => {
+            if (defaultPrefix) setPrefix(defaultPrefix)
+            setCreated(null)
+            setError(null)
+            setOpen(true)
+          }}
+          className="flex items-center gap-1.5 rounded-full bg-[#1b4f9c] px-4 py-2.5 text-xs font-bold text-white transition-colors duration-200 hover:bg-[#143d79] active:scale-95"
+        >
+          <UserPlus size={13} /> Generate Akun Crew
+        </button>
+      )}
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">

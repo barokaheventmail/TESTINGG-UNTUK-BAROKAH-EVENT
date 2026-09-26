@@ -3,13 +3,26 @@
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { Loader2, ShieldAlert, Trash2, X } from 'lucide-react'
+import { useModal } from '@/components/admin/use-modal'
 
 type CrewItem = { username: string; name: string | null; buses: string[] }
 type Result = { deleted: CrewItem[]; unlinked: CrewItem[] }
 
-export function DeleteCrewButton({ eventId, totalCrew }: { eventId: string; totalCrew: number }) {
+export function DeleteCrewButton({
+  eventId,
+  totalCrew,
+  mode = 'button',
+  open: controlledOpen,
+  onOpenChange,
+}: {
+  eventId: string
+  totalCrew: number
+  mode?: 'button' | 'modal'
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+}) {
   const router = useRouter()
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useModal(controlledOpen, onOpenChange)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<Result | null>(null)
@@ -42,19 +55,21 @@ export function DeleteCrewButton({ eventId, totalCrew }: { eventId: string; tota
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => {
-          setResult(null)
-          setError(null)
-          setOpen(true)
-        }}
-        disabled={totalCrew === 0}
-        title={totalCrew === 0 ? 'Belum ada crew di event ini.' : 'Hapus semua akun crew sekaligus.'}
-        className="flex items-center gap-1.5 rounded-full border border-[#f0c4c4] bg-white px-4 py-2.5 text-xs font-bold text-[#c03a3a] transition-colors duration-200 hover:bg-[#fdf0f0] active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        <Trash2 size={13} /> Hapus Crew
-      </button>
+      {mode === 'button' && (
+        <button
+          type="button"
+          onClick={() => {
+            setResult(null)
+            setError(null)
+            setOpen(true)
+          }}
+          disabled={totalCrew === 0}
+          title={totalCrew === 0 ? 'Belum ada crew di event ini.' : 'Hapus semua akun crew sekaligus.'}
+          className="flex items-center gap-1.5 rounded-full border border-[#f0c4c4] bg-white px-4 py-2.5 text-xs font-bold text-[#c03a3a] transition-colors duration-200 hover:bg-[#fdf0f0] active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <Trash2 size={13} /> Hapus Crew
+        </button>
+      )}
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">

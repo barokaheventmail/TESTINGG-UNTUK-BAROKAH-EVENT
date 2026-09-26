@@ -1,9 +1,8 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
-import { Check, KeyRound, Loader2, Pencil, Phone, Plus, Trash2, User as UserIcon, X } from 'lucide-react'
-import { BusChip } from './bus-chip'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Bus, Check, ChevronDown, KeyRound, Loader2, Pencil, Phone, Plus, Search, Trash2, User as UserIcon, X } from 'lucide-react'
 
 export type BusWorkerData = {
   id: string
@@ -41,39 +40,319 @@ function usernameFromName(name: string): string {
 const inputCls =
   'w-full rounded-xl border border-[#dfe4e8] bg-[#f8fafc] px-3 py-2 text-xs font-semibold text-[#1b3555] outline-none placeholder:text-[#9aa3af] focus:border-[#1b4f9c] focus:bg-white focus:ring-2 focus:ring-[#1b4f9c]/15'
 
+// Armandanya bisa dozens bus, jadi strip chip horizontal memaksa pengguna
+// menggulir ribuan piksel. Satu dropdown + pencarian lebih ringkas dan bus mana
+// pun bisa ditemukan tanpa scroll.
+function ArmadaPicker({
+  buses,
+  selectedIds,
+  onToggle,
+  onSelectAll,
+  onClear,
+}: {
+  buses: BusWithWorkersData[]
+  selectedIds: string[]
+  onToggle: (id: string) => void
+  onSelectAll: () => void
+  onClear: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [q, setQ] = useState('')
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function onPointerDown(e: MouseEvent | TouchEvent) {
+      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false)
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', onPointerDown)
+    document.addEventListener('touchstart', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown)
+      document.removeEventListener('touchstart', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [open])
+
+  const needle = q.trim().toLowerCase()
+  const filtered = useMemo(
+    () => (needle ? buses.filter((b) => b.name.toLowerCase().includes(needle)) : buses),
+    [buses, needle],
+  )
+  const allIds = useMemo(() => filtered.map((b) => b.id), [filtered])
+  const pickedInView = allIds.filter((id) => selectedIds.includes(id)).length
+  const allPicked = allIds.length > 0 && pickedInView === allIds.length
+  const totalCrew = buses.filter((b) => selectedIds.includes(b.id)).reduce((s, b) => s + b.workers.length, 0)
+
+  return (
+    <div ref={wrapRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        className="flex w-full items-center gap-3 rounded-2xl bg-[linear-gradient(100deg,#071e3d_0%,#163d78_100%)] px-4 py-3 text-left text-white shadow-[0_14px_32px_-14px_rgba(9,32,74,0.95)] transition-shadow duration-300 hover:shadow-[0_18px_38px_-14px_rgba(9,32,74,1)]"
+      >
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15">
+          <Bus size={17} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-bold">
+            {selectedIds.length === 0
+              ? 'Pilih Armada'
+              : selectedIds.length === 1
+                ? buses.find((b) => b.id === selectedIds[0])?.name
+                : `${selectedIds.length} bus dipilih`}
+          </span>
+          <span className="mt-0.5 block truncate text-[11px] font-semibold text-white/70">
+            {selectedIds.length === 0
+              ? `${buses.length} bus tersedia · bisa pilih beberapa`
+              : `${totalCrew} crew di ${selectedIds.length} bus terpilih`}
+          </span>
+        </span>
+        {selectedIds.length > 0 && (
+          <span
+            onClick={(e) => {
+              e.stopPropagation()
+              onClear()
+            }}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.stopPropagation()
+                onClear()
+              }
+            }}
+            title="Batalkan semua pilihan"
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/15 transition-colors duration-200 hover:bg-white/30"
+          >
+            <X size={13} />
+          </span>
+        )}
+        <span
+          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/15 transition-transform duration-300 ease-out ${
+            open ? 'rotate-180' : ''
+          }`}
+        >
+          <ChevronDown size={14} />
+        </span>
+      </button>
+
+      {/* Tanpa `transform`/`filter` agar tidak menjadi blok penampung posisi
+          untuk elemen `fixed` di dalam panel. */}
+      <div
+        role="listbox"
+        aria-hidden={!open}
+        className={`absolute inset-x-0 top-full z-40 mt-2 rounded-2xl border border-[#ece3cd] bg-white p-2 transition-[opacity,visibility,box-shadow] duration-200 ease-out ${
+          open
+            ? 'visible opacity-100 shadow-[0_28px_70px_-22px_rgba(9,32,74,0.6)]'
+            : 'pointer-events-none invisible opacity-0 shadow-[0_12px_28px_-20px_rgba(9,32,74,0.4)]'
+        }`}
+      >
+        <div className="mb-1.5 h-px bg-gradient-to-r from-transparent via-[#e8d9ab] to-transparent" />
+
+        <div className="relative">
+          <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#9aa3af]" />
+          <input
+            ref={inputRef}
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            onFocus={() => inputRef.current?.select()}
+            placeholder="Cari bus, mis. bus 12"
+            className="w-full rounded-xl border border-[#dfe4e8] bg-[#f8fafc] py-2 pl-9 pr-3 text-xs font-semibold text-[#1b3555] outline-none placeholder:text-[#9aa3af] focus:border-[#1b4f9c] focus:bg-white focus:ring-2 focus:ring-[#1b4f9c]/15"
+          />
+        </div>
+
+        <div className="mt-1.5 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={allPicked ? onClear : onSelectAll}
+            className="flex items-center gap-1.5 rounded-full border border-[#e8d9ab] bg-[#fbf7ec] px-3 py-1.5 text-[11px] font-bold text-[#b8860b] transition-colors duration-200 hover:bg-[#f5e7bd]"
+          >
+            {allPicked ? <X size={11} /> : <Check size={11} />}
+            {allPicked ? 'Batalkan semua' : `Pilih semua${needle ? ` (${filtered.length})` : ''}`}
+          </button>
+          <span className="text-[11px] font-semibold text-[#8a93a3]">
+            {pickedInView} dari {filtered.length} tampil dipilih
+          </span>
+        </div>
+
+        <div className="mt-1.5 max-h-72 overflow-y-auto overscroll-contain">
+          {filtered.length === 0 ? (
+            <p className="px-3 py-6 text-center text-xs font-semibold text-[#9aa3af]">
+              Tidak ada bus yang cocok dengan &ldquo;{q.trim()}&rdquo;.
+            </p>
+          ) : (
+            filtered.map((bus) => {
+              const isSelected = selectedIds.includes(bus.id)
+              return (
+                <button
+                  key={bus.id}
+                  type="button"
+                  role="option"
+                  aria-selected={isSelected}
+                  onClick={() => onToggle(bus.id)}
+                  className={`flex w-full items-center gap-3 rounded-xl px-2.5 py-2.5 text-left transition-colors duration-200 ${
+                    isSelected ? 'bg-[#fbf7ec]' : 'hover:bg-[#f4f7fa]'
+                  }`}
+                >
+                  <span
+                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors duration-200 ${
+                      isSelected ? 'bg-[#f5e7bd] text-[#b8860b]' : 'bg-[#eef3fb] text-[#163d78]'
+                    }`}
+                  >
+                    {isSelected ? <Check size={15} /> : <Bus size={15} />}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[13px] font-bold text-[#1b3555]">{bus.name}</span>
+                    <span className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                      <span className="rounded-full bg-[#f1f3f5] px-2 py-0.5 text-[10px] font-bold text-[#657080]">
+                        {bus.count} peserta
+                      </span>
+                      {bus.attended > 0 && (
+                        <span className="rounded-full bg-[#e6f4ea] px-2 py-0.5 text-[10px] font-bold text-[#2ca84a]">
+                          {bus.attended} hadir
+                        </span>
+                      )}
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                          bus.workers.length > 0
+                            ? 'bg-[#eef3fb] text-[#1b4f9c]'
+                            : 'bg-[#f8fafc] text-[#9aa3af]'
+                        }`}
+                      >
+                        {bus.workers.length > 0 ? `${bus.workers.length} crew` : 'belum ada crew'}
+                      </span>
+                    </span>
+                  </span>
+                </button>
+              )
+            })
+          )}
+        </div>
+
+        <div className="mt-1.5 h-px bg-[#f1f3f5]" />
+        <p className="px-2.5 py-1.5 text-[11px] font-semibold text-[#8a93a3]">
+          {filtered.length === buses.length
+            ? `Menampilkan semua ${buses.length} bus.`
+            : `${filtered.length} bus cocok dari ${buses.length}.`}
+        </p>
+      </div>
+    </div>
+  )
+}
+
+// Mode gabungan: satu daftar untuk semua bus terpilih. Bus tanpa crew tetap
+// ikut ditampilkan sebagai baris "belum ada crew" supaya tidak ada yang terasa
+// hilang -- terutama saat "Pilih Semua" dipakai di event dengan 78 bus.
+function CombinedCrewPanel({ eventId, buses }: { eventId: string; buses: BusWithWorkersData[] }) {
+  const [addingTo, setAddingTo] = useState<string | null>(null)
+  const totalCrew = buses.reduce((s, b) => s + b.workers.length, 0)
+  return (
+    <div>
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-[#9aa3af]">
+        {buses.length} bus dipilih · {totalCrew} crew
+      </p>
+      <div className="mt-2 divide-y divide-[#f1f3f5]">
+        {buses.map((bus) => (
+          <div key={bus.id} className="py-2 first:pt-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#eef3fb] text-[#163d78]">
+                <Bus size={14} />
+              </span>
+              <span className="text-[13px] font-bold text-[#1b3555]">{bus.name}</span>
+              <span className="rounded-full bg-[#f1f3f5] px-2 py-0.5 text-[10px] font-bold text-[#657080]">
+                {bus.count} peserta
+              </span>
+              {bus.attended > 0 && (
+                <span className="rounded-full bg-[#e6f4ea] px-2 py-0.5 text-[10px] font-bold text-[#2ca84a]">
+                  {bus.attended} hadir
+                </span>
+              )}
+              <span className="ml-auto flex items-center gap-0.5">
+                <span className="mr-1 text-[11px] font-semibold text-[#8a93a3]">
+                  {bus.workers.length > 0 ? `${bus.workers.length} crew` : 'belum ada crew'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setAddingTo((cur) => (cur === bus.id ? null : bus.id))}
+                  title={`Tambah crew di ${bus.name}`}
+                  className="rounded-full p-1.5 text-[#1b4f9c] transition-colors hover:bg-[#eef3fb]"
+                >
+                  <Plus size={14} />
+                </button>
+                <RenameArmada eventId={eventId} bus={bus} compact />
+                <DeleteArmada eventId={eventId} bus={bus} compact />
+              </span>
+            </div>
+            {bus.workers.length > 0 && (
+              <div className="mt-1.5 pl-9">
+                {bus.workers.map((w) => (
+                  <WorkerRow key={w.id} eventId={eventId} busId={bus.id} worker={w} />
+                ))}
+              </div>
+            )}
+            {addingTo === bus.id && (
+              <AddCrewForm eventId={eventId} bus={bus} onClose={() => setAddingTo(null)} />
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export function BusArmadaSection({ eventId, buses }: { eventId: string; buses: BusWithWorkersData[] }) {
-  const [openBusId, setOpenBusId] = useState<string | null>(null)
-  const selected = buses.find((b) => b.id === openBusId) ?? null
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const selectedBuses = useMemo(
+    // Urut ikut `buses` (bukan urutan klik) supaya daftar gabungan selalu rapi.
+    () => buses.filter((b) => selectedIds.includes(b.id)),
+    [buses, selectedIds],
+  )
+  const single = selectedBuses.length === 1 ? selectedBuses[0] : null
 
   return (
     <>
-      <div className="flex flex-nowrap gap-2 overflow-x-auto pb-1">
-        {buses.map((bus) => (
-          <BusChip
-            key={bus.id}
-            name={bus.name}
-            count={bus.count}
-            attended={bus.attended}
-            selected={bus.id === openBusId}
-            onSelect={() => setOpenBusId((cur) => (cur === bus.id ? null : bus.id))}
-          />
-        ))}
-      </div>
-      {selected && (
+      <ArmadaPicker
+        buses={buses}
+        selectedIds={selectedIds}
+        onToggle={(id) =>
+          setSelectedIds((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]))
+        }
+        onSelectAll={() => setSelectedIds(buses.map((b) => b.id))}
+        onClear={() => setSelectedIds([])}
+      />
+
+      {selectedBuses.length > 0 && (
         <div className="animate-fade-up mt-2 rounded-2xl border border-[#1b4f9c]/30 bg-white p-4 shadow-sm">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <h3 className="text-sm font-bold text-[#1b3555]">
-              Crew Armada <span className="text-[#1b4f9c]">{selected.name}</span>
+              Crew Armada{' '}
+              <span className="text-[#1b4f9c]">
+                {single ? single.name : `${selectedBuses.length} bus dipilih`}
+              </span>
             </h3>
             <div className="flex items-center gap-2">
-              <span className="text-[11px] font-semibold text-[#657080]">
-                {selected.count} peserta{selected.attended > 0 ? ` · ${selected.attended} hadir` : ''}
-              </span>
-              <RenameArmada eventId={eventId} bus={selected} />
-              <DeleteArmada eventId={eventId} bus={selected} />
+              {/* Aksi armada ini per-bus, jadi hanya saat tepat satu bus dipilih. */}
+              {single && (
+                <>
+                  <span className="text-[11px] font-semibold text-[#657080]">
+                    {single.count} peserta
+                    {single.attended > 0 ? ` · ${single.attended} hadir` : ''}
+                  </span>
+                  <RenameArmada eventId={eventId} bus={single} />
+                  <DeleteArmada eventId={eventId} bus={single} />
+                </>
+              )}
               <button
                 type="button"
-                onClick={() => setOpenBusId(null)}
+                onClick={() => setSelectedIds([])}
                 className="rounded-full p-1 text-[#657080] hover:bg-[#f1f3f5]"
                 title="Tutup"
               >
@@ -81,14 +360,19 @@ export function BusArmadaSection({ eventId, buses }: { eventId: string; buses: B
               </button>
             </div>
           </div>
-          <BusCrewPanel eventId={eventId} bus={selected} />
+
+          {single ? (
+            <BusCrewPanel eventId={eventId} bus={single} />
+          ) : (
+            <CombinedCrewPanel eventId={eventId} buses={selectedBuses} />
+          )}
         </div>
       )}
     </>
   )
 }
 
-function RenameArmada({ eventId, bus }: { eventId: string; bus: BusWithWorkersData }) {
+function RenameArmada({ eventId, bus, compact = false }: { eventId: string; bus: BusWithWorkersData; compact?: boolean }) {
   const router = useRouter()
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(bus.name)
@@ -146,14 +430,18 @@ function RenameArmada({ eventId, bus }: { eventId: string; bus: BusWithWorkersDa
       type="button"
       onClick={() => { setName(bus.name); setError(null); setEditing(true) }}
       title="Ubah nama armada"
-      className="flex items-center gap-1 rounded-full border border-[#dfe4e8] px-2.5 py-1 text-[11px] font-bold text-[#657080] hover:bg-[#f1f3f5]"
+      className={
+        compact
+          ? 'rounded-full p-1.5 text-[#657080] transition-colors hover:bg-[#f1f3f5]'
+          : 'flex items-center gap-1 rounded-full border border-[#dfe4e8] px-2.5 py-1 text-[11px] font-bold text-[#657080] hover:bg-[#f1f3f5]'
+      }
     >
-      <Pencil size={11} /> Ubah nama
+      {compact ? <Pencil size={13} /> : <><Pencil size={11} /> Ubah nama</>}
     </button>
   )
 }
 
-function DeleteArmada({ eventId, bus }: { eventId: string; bus: BusWithWorkersData }) {
+function DeleteArmada({ eventId, bus, compact = false }: { eventId: string; bus: BusWithWorkersData; compact?: boolean }) {
   const router = useRouter()
   const [confirming, setConfirming] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -197,9 +485,13 @@ function DeleteArmada({ eventId, bus }: { eventId: string; bus: BusWithWorkersDa
       type="button"
       onClick={() => setConfirming(true)}
       title="Hapus armada"
-      className="flex items-center gap-1 rounded-full border border-red-200 px-2.5 py-1 text-[11px] font-bold text-red-600 hover:bg-red-50"
+      className={
+        compact
+          ? 'rounded-full p-1.5 text-red-500 transition-colors hover:bg-red-50'
+          : 'flex items-center gap-1 rounded-full border border-red-200 px-2.5 py-1 text-[11px] font-bold text-red-600 hover:bg-red-50'
+      }
     >
-      <Trash2 size={11} /> Hapus armada
+      {compact ? <Trash2 size={13} /> : <><Trash2 size={11} /> Hapus armada</>}
     </button>
   )
 }
@@ -381,9 +673,11 @@ function WorkerRow({
   )
 }
 
-function BusCrewPanel({ eventId, bus }: { eventId: string; bus: BusWithWorkersData }) {
+// Form tambah crew dipisah dari trigger-nya supaya bisa dipakai ulang: di mode
+// satu bus jadi tombol dashed penuh, di mode gabungan jadi ikon "+" per baris
+// dengan form yang terbuka tepat di bawah baris yang dipilih.
+function AddCrewForm({ eventId, bus, onClose }: { eventId: string; bus: BusWithWorkersData; onClose: () => void }) {
   const router = useRouter()
-  const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ name: '', phone: '', username: '', password: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -401,6 +695,7 @@ function BusCrewPanel({ eventId, bus }: { eventId: string; bus: BusWithWorkersDa
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Gagal menambah crew.')
       setForm({ name: '', phone: '', username: '', password: '' })
+      onClose()
       router.refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Gagal menambah crew.')
@@ -408,6 +703,79 @@ function BusCrewPanel({ eventId, bus }: { eventId: string; bus: BusWithWorkersDa
       setLoading(false)
     }
   }
+
+  return (
+    <form onSubmit={submit} className="mt-2 space-y-2 rounded-xl bg-[#f8fafc] p-3">
+      <div className="flex items-center justify-between gap-2">
+        <p className="flex flex-wrap items-center gap-1 text-xs font-bold text-[#1b3555]">
+          <Plus size={13} /> Tambah Crew Manual di <span className="text-[#1b4f9c]">{bus.name}</span>
+        </p>
+        <button
+          type="button"
+          onClick={() => { onClose(); setError(null) }}
+          className="rounded-full p-1 text-[#657080] hover:bg-[#e8eef6]"
+          title="Tutup form"
+        >
+          <X size={13} />
+        </button>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <input
+          value={form.name}
+          onChange={(e) => {
+            const name = e.target.value
+            setForm((f) => ({ ...f, name, username: f.username || usernameFromName(name) }))
+          }}
+          required
+          placeholder="Nama lengkap crew"
+          className={inputCls}
+        />
+        <input
+          value={form.phone}
+          onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+          placeholder="No WA (08xx)"
+          className={inputCls}
+        />
+        <input
+          value={form.username}
+          onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))}
+          required
+          placeholder="Username login"
+          className={inputCls}
+        />
+        <div className="flex gap-1.5">
+          <input
+            value={form.password}
+            onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+            required
+            placeholder="Password"
+            className={inputCls}
+          />
+          <button
+            type="button"
+            onClick={() => setForm((f) => ({ ...f, password: generatePassword() }))}
+            className="shrink-0 rounded-xl border border-[#dfe4e8] bg-white px-3 text-[11px] font-bold text-[#657080] hover:bg-[#f1f3f5]"
+          >
+            Generate
+          </button>
+        </div>
+      </div>
+      {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-[11px] font-semibold text-red-600">{error}</p>}
+      <div className="flex justify-end">
+        <button
+          type="submit"
+          disabled={loading || !form.name.trim() || !form.username.trim() || form.password.length < 6}
+          className="flex items-center gap-1.5 rounded-full bg-[#1b4f9c] px-4 py-2 text-xs font-bold text-white transition-colors duration-200 hover:bg-[#143d79] active:scale-95 disabled:opacity-60"
+        >
+          {loading ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />} Simpan Crew
+        </button>
+      </div>
+    </form>
+  )
+}
+
+function BusCrewPanel({ eventId, bus }: { eventId: string; bus: BusWithWorkersData }) {
+  const [showForm, setShowForm] = useState(false)
 
   return (
     <div>
@@ -425,72 +793,7 @@ function BusCrewPanel({ eventId, bus }: { eventId: string; bus: BusWithWorkersDa
       )}
 
       {showForm ? (
-        <form onSubmit={submit} className="mt-3 space-y-2 rounded-xl bg-[#f8fafc] p-3">
-          <div className="flex items-center justify-between gap-2">
-            <p className="flex items-center gap-1 text-xs font-bold text-[#1b3555]">
-              <Plus size={13} /> Tambah Crew Manual
-            </p>
-            <button
-              type="button"
-              onClick={() => { setShowForm(false); setError(null) }}
-              className="rounded-full p-1 text-[#657080] hover:bg-[#e8eef6]"
-              title="Tutup form"
-            >
-              <X size={13} />
-            </button>
-          </div>
-          <div className="grid gap-2 sm:grid-cols-2">
-            <input
-              value={form.name}
-              onChange={(e) => {
-                const name = e.target.value
-                setForm((f) => ({ ...f, name, username: f.username || usernameFromName(name) }))
-              }}
-              required
-              placeholder="Nama lengkap crew"
-              className={inputCls}
-            />
-            <input
-              value={form.phone}
-              onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-              placeholder="No WA (08xx)"
-              className={inputCls}
-            />
-            <input
-              value={form.username}
-              onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))}
-              required
-              placeholder="Username login"
-              className={inputCls}
-            />
-            <div className="flex gap-1.5">
-              <input
-                value={form.password}
-                onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-                required
-                placeholder="Password"
-                className={inputCls}
-              />
-              <button
-                type="button"
-                onClick={() => setForm((f) => ({ ...f, password: generatePassword() }))}
-                className="shrink-0 rounded-xl border border-[#dfe4e8] bg-white px-3 text-[11px] font-bold text-[#657080] hover:bg-[#f1f3f5]"
-              >
-                Generate
-              </button>
-            </div>
-          </div>
-          {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-[11px] font-semibold text-red-600">{error}</p>}
-          <div className="flex justify-end">
-            <button
-              type="submit"
-              disabled={loading || !form.name.trim() || !form.username.trim() || form.password.length < 6}
-              className="flex items-center gap-1.5 rounded-full bg-[#1b4f9c] px-4 py-2 text-xs font-bold text-white transition-colors duration-200 hover:bg-[#143d79] active:scale-95 disabled:opacity-60"
-            >
-              {loading ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />} Simpan Crew
-            </button>
-          </div>
-        </form>
+        <AddCrewForm eventId={eventId} bus={bus} onClose={() => setShowForm(false)} />
       ) : (
         <button
           type="button"

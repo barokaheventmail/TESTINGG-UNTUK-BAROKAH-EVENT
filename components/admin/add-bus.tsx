@@ -2,14 +2,30 @@
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { Loader2, Plus } from 'lucide-react'
+import { Bus, Loader2, Plus, X } from 'lucide-react'
+import { useModal } from '@/components/admin/use-modal'
 
-export function AddBus({ eventId }: { eventId: string }) {
+type AddBusProps = {
+  eventId: string
+  // 'button' = pemicunya ikut dirender (dipakai saat panel armada masih kosong).
+  // 'modal'  = hanya layarnya; pemicunya dibuat oleh ActionMenu.
+  mode?: 'button' | 'modal'
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+}
+
+export function AddBus({ eventId, mode = 'button', open: controlledOpen, onOpenChange }: AddBusProps) {
   const router = useRouter()
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useModal(controlledOpen, onOpenChange)
   const [name, setName] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  function close() {
+    setOpen(false)
+    setName('')
+    setError(null)
+  }
 
   async function add(e: React.FormEvent) {
     e.preventDefault()
@@ -34,38 +50,68 @@ export function AddBus({ eventId }: { eventId: string }) {
     }
   }
 
-  if (!open) {
-    return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="flex items-center gap-1.5 rounded-full border border-[#dfe4e8] bg-white px-4 py-2 text-xs font-bold text-[#1b3555] transition-colors duration-200 hover:bg-[#f1f3f5] active:scale-95"
-      >
-        <Plus size={13} /> Tambah Bus
-      </button>
-    )
-  }
-
   return (
-    <form onSubmit={add} className="flex flex-wrap items-center gap-2">
-      <input
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        placeholder="Nama bus (mis. Bus 3)"
-        autoFocus
-        className="w-44 rounded-full border border-[#dfe4e8] bg-[#f8fafc] px-4 py-2 text-xs font-semibold text-[#1b3555] outline-none placeholder:text-[#9aa3af] focus:border-[#1b4f9c] focus:bg-white focus:ring-2 focus:ring-[#1b4f9c]/15"
-      />
-      <button
-        type="submit"
-        disabled={loading || !name.trim()}
-        className="flex items-center gap-1.5 rounded-full bg-[#1b4f9c] px-4 py-2 text-xs font-bold text-white transition-colors duration-200 hover:bg-[#143d79] active:scale-95 disabled:opacity-60"
-      >
-        {loading ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />} Simpan
-      </button>
-      <button type="button" onClick={() => setOpen(false)} className="text-xs font-bold text-[#657080] hover:text-[#1b4f9c]">
-        Batal
-      </button>
-      {error && <span className="text-xs font-semibold text-red-600">{error}</span>}
-    </form>
+    <>
+      {mode === 'button' && (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="flex items-center gap-1.5 rounded-full border border-[#dfe4e8] bg-white px-4 py-2.5 text-xs font-bold text-[#1b3555] transition-colors duration-200 hover:bg-[#f1f3f5] active:scale-95"
+        >
+          <Plus size={13} /> Tambah Bus
+        </button>
+      )}
+
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="animate-fade-up flex w-full max-w-sm flex-col rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-sm font-bold text-[#1b3555]">Tambah Bus</h3>
+              <button type="button" onClick={close} className="rounded-full p-1 text-[#657080] hover:bg-[#f1f3f5]">
+                <X size={15} />
+              </button>
+            </div>
+
+            <form onSubmit={add} className="mt-4">
+              <label className="flex items-center gap-2 text-xs font-bold text-[#1b3555]">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#eef3fb] text-[#1b4f9c]">
+                  <Bus size={14} />
+                </span>
+                Nama armada
+              </label>
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="mis. Bus 3"
+                autoFocus
+                className="mt-2 w-full rounded-full border border-[#dfe4e8] bg-[#f8fafc] px-4 py-2.5 text-sm font-semibold text-[#1b3555] outline-none placeholder:text-[#9aa3af] focus:border-[#1b4f9c] focus:bg-white focus:ring-2 focus:ring-[#1b4f9c]/15"
+              />
+              <p className="mt-2 text-[11px] font-semibold text-[#657080]">
+                Nama ini dipakai untuk mengelompokkan peserta dan crew. Bisa diubah nanti.
+              </p>
+
+              {error && <p className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-[11px] font-semibold text-red-600">{error}</p>}
+
+              <div className="mt-5 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={close}
+                  className="rounded-full border border-[#dfe4e8] px-4 py-2 text-xs font-bold text-[#657080] hover:bg-[#f1f3f5]"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading || !name.trim()}
+                  className="flex items-center gap-1.5 rounded-full bg-[#1b4f9c] px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-[#143d79] active:scale-95 disabled:opacity-60"
+                >
+                  {loading ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />} Simpan
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </>
   )
 }

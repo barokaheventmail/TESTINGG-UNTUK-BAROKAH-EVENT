@@ -8,14 +8,12 @@ import { EditEvent } from '@/components/admin/edit-event'
 import { DeleteEvent } from '@/components/admin/delete-event'
 import { ImportExcel } from '@/components/admin/import-excel'
 import { ParticipantTable, type RowBus } from '@/components/admin/participant-table'
-import { AddBus } from '@/components/admin/add-bus'
 import { AddParticipant } from '@/components/admin/add-participant'
+import { ArmadaActions } from '@/components/admin/armada-actions'
 import { BusArmadaSection, type BusWithWorkersData } from '@/components/admin/bus-crew'
-import { GenerateCrewButton, type GenerateBus } from '@/components/admin/generate-crew'
 import { EventImage } from '@/components/admin/event-image'
+import type { GenerateBus } from '@/components/admin/generate-crew'
 import { ResetAttendance } from '@/components/admin/reset-attendance'
-import { ResetCrewPasswordsButton } from '@/components/admin/reset-crew-passwords'
-import { DeleteCrewButton } from '@/components/admin/delete-crew'
 import { LogEntry } from '@/components/admin/log-entry'
 import { TabBar, isEventTab, type EventTabId } from '@/components/admin/tab-bar'
 
@@ -267,27 +265,21 @@ export default async function EventDetail({
 
       {active === 'armada' && (
         <div className="mt-5 space-y-2">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+            <ArmadaActions
+              eventId={event.id}
+              eventTitle={event.title}
+              defaultPrefix={event.crewPrefix}
+              buses={generateBuses}
+              totalCrew={uniqueCrewCount}
+              totalAccounts={generateBuses.reduce((sum, b) => sum + b.workerCount, 0)}
+              hasBuses={event.buses.length > 0}
+            />
             <div>
               <h2 className="text-sm font-bold text-[#1b3555]">Bus & Armada</h2>
               <p className="text-xs text-[#657080]">
                 Klik armada untuk kelola crew dan namanya. Akun crew dibuat dari Generate Akun Crew.
               </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {event.buses.length > 0 && (
-                <GenerateCrewButton
-                  eventId={event.id}
-                  eventTitle={event.title}
-                  defaultPrefix={event.crewPrefix}
-                  buses={generateBuses}
-                />
-              )}
-              {event.buses.length > 0 && (
-                <ResetCrewPasswordsButton eventId={event.id} totalCrew={uniqueCrewCount} />
-              )}
-              {event.buses.length > 0 && <DeleteCrewButton eventId={event.id} totalCrew={uniqueCrewCount} />}
-              <AddBus eventId={event.id} />
             </div>
           </div>
           {event.buses.length > 0 ? (
