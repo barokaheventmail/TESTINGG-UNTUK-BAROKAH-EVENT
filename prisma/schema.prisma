@@ -43,6 +43,11 @@ model Event {
   note      String?
   imageUrl  String?
   crewPrefix String?
+  panduanItinerary String?
+  panduanRules      String?
+  crewName   String?
+  crewPhone  String?
+  crewPhotoUrl String?
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
 

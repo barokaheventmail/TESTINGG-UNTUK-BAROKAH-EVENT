@@ -19,6 +19,8 @@ const ACTION_GROUP: Record<string, LogGroup> = {
   'event.update': 'Kelola Event',
   'event.delete': 'Kelola Event',
   'event.clearData': 'Kelola Event',
+  'event.crewPhoto': 'Kelola Event',
+  'event.crewPhotoRemove': 'Kelola Event',
   'bus.create': 'Armada',
   'bus.update': 'Armada',
   'bus.delete': 'Armada',
@@ -65,6 +67,8 @@ export const LOG_ACTIONS: { group: LogGroup; actions: { value: string; label: st
       { value: 'event.update', label: 'Ubah event' },
       { value: 'event.delete', label: 'Hapus event' },
       { value: 'event.clearData', label: 'Hapus data bus & peserta' },
+      { value: 'event.crewPhoto', label: 'Ganti foto crew on duty' },
+      { value: 'event.crewPhotoRemove', label: 'Hapus foto crew on duty' },
     ],
   },
   {

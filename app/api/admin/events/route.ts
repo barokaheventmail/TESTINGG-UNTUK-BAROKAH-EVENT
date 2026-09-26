@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Data tidak valid' }, { status: 400 })
   }
 
-  const { title, date, location, status, note } = parsed.data
+  const { title, date, location, status, note, panduanItinerary, crewName, crewPhone, crewPhotoUrl } = parsed.data
   const d = new Date(date)
   if (isNaN(d.getTime())) {
     return NextResponse.json({ error: 'Tanggal tidak valid.' }, { status: 400 })
@@ -46,7 +46,17 @@ export async function POST(request: NextRequest) {
 
   const event = await prisma.$transaction(async (tx) => {
     const created = await tx.event.create({
-      data: { title, date: d, location, status, note: note || null },
+      data: {
+        title,
+        date: d,
+        location,
+        status,
+        note: note || null,
+        panduanItinerary: panduanItinerary || null,
+        crewName: crewName || null,
+        crewPhone: crewPhone || null,
+        crewPhotoUrl: crewPhotoUrl || null,
+      },
     })
     await tx.activityLog.create({
       data: { eventId: created.id, userId: session.sub, action: 'event.create', detail: { title, date: d.toISOString() } },

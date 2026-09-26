@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
+import type { Prisma } from '@prisma/client'
 import { requireAdminSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
-import { eventSchema } from '@/lib/excel'
+import { eventPatchSchema } from '@/lib/excel'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -36,19 +37,36 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  const parsed = eventSchema.safeParse(body)
+  const parsed = eventPatchSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Data tidak valid' }, { status: 400 })
   }
 
-  const { title, date, location, status, note } = parsed.data
-  const d = new Date(date)
-  if (isNaN(d.getTime())) return NextResponse.json({ error: 'Tanggal tidak valid.' }, { status: 400 })
+  const { title, date, location, status, note, panduanItinerary, crewName, crewPhone, crewPhotoUrl } = parsed.data
+
+  const data: Prisma.EventUpdateInput = {}
+  if (title !== undefined) data.title = title
+  if (date !== undefined) {
+    const d = new Date(date)
+    if (isNaN(d.getTime())) return NextResponse.json({ error: 'Tanggal tidak valid.' }, { status: 400 })
+    data.date = d
+  }
+  if (location !== undefined) data.location = location
+  if (status !== undefined) data.status = status
+  if (note !== undefined) data.note = note || null
+  if (panduanItinerary !== undefined) data.panduanItinerary = panduanItinerary || null
+  if (crewName !== undefined) data.crewName = crewName || null
+  if (crewPhone !== undefined) data.crewPhone = crewPhone || null
+  if (crewPhotoUrl !== undefined) data.crewPhotoUrl = crewPhotoUrl || null
+
+  if (Object.keys(data).length === 0) {
+    return NextResponse.json({ error: 'Tidak ada data yang diubah.' }, { status: 400 })
+  }
 
   const event = await prisma.$transaction(async (tx) => {
     const updated = await tx.event.update({
       where: { id },
-      data: { title, date: d, location, status, note: note || null },
+      data,
     })
     await tx.activityLog.create({
       data: { eventId: id, userId: session.sub, action: 'event.update', detail: { title } },

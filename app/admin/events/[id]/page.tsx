@@ -11,6 +11,7 @@ import { ParticipantTable, type RowBus } from '@/components/admin/participant-ta
 import { AddParticipant } from '@/components/admin/add-participant'
 import { ArmadaActions } from '@/components/admin/armada-actions'
 import { BusArmadaSection, type BusWithWorkersData } from '@/components/admin/bus-crew'
+import { PanduanEditor } from '@/components/admin/panduan-editor'
 import { EventImage } from '@/components/admin/event-image'
 import type { GenerateBus } from '@/components/admin/generate-crew'
 import { ResetAttendance } from '@/components/admin/reset-attendance'
@@ -166,16 +167,16 @@ export default async function EventDetail({
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-xl font-bold text-[#1b3555]">{event.title}</h1>
             <span className="flex items-center gap-2">
-              <EditEvent
-                event={{
-                  id: event.id,
-                  title: event.title,
-                  date: event.date.toISOString(),
-                  location: event.location,
-                  status: event.status,
-                  note: event.note ?? '',
-                }}
-              />
+<EditEvent
+                  event={{
+                    id: event.id,
+                    title: event.title,
+                    date: event.date.toISOString(),
+                    location: event.location,
+                    status: event.status,
+                    note: event.note ?? '',
+                  }}
+                />
               <DeleteEvent eventId={event.id} />
             </span>
           </div>
@@ -242,6 +243,16 @@ export default async function EventDetail({
             )}
           </div>
         </div>
+      )}
+
+      {active === 'panduan' && (
+        <PanduanEditor
+          eventId={event.id}
+          initialItinerary={event.panduanItinerary ?? '[]'}
+          initialCrewName={event.crewName ?? ''}
+          initialCrewPhone={event.crewPhone ?? ''}
+          initialCrewPhotoUrl={event.crewPhotoUrl ?? null}
+        />
       )}
 
       {active === 'peserta' && (

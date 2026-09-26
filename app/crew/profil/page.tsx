@@ -1,10 +1,12 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
-import { ArrowLeft, CircleUserRound, History } from 'lucide-react'
+import { ArrowLeft, CalendarDays, CircleUserRound, History, Route } from 'lucide-react'
 import type { Prisma } from '@prisma/client'
 import { requireCrewSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { formatWaktuLengkap } from '@/lib/dates'
+import { parseItinerary, type ItineraryRow } from '@/lib/itinerary'
 import { SessionGuard } from '@/components/crew/session-guard'
 import { LogoutButton } from '@/components/admin/logout-button'
 import { CrewProfileEditor } from '@/components/crew/profile-editor'
@@ -21,7 +23,7 @@ export default async function CrewProfilPage({ searchParams }: { searchParams: S
   if (!session) redirect('/login?scope=CREW&next=/crew/profil')
 
   const sp = await searchParams
-  const tab = sp.tab === 'riwayat' ? 'riwayat' : 'profile'
+  const tab = sp.tab === 'riwayat' ? 'riwayat' : sp.tab === 'itinerary' ? 'itinerary' : 'profile'
   const page = Math.max(1, Number(sp.page) || 1)
   const q = typeof sp.q === 'string' ? sp.q.trim().slice(0, 100) : ''
   const userId = session.sub
@@ -73,6 +75,42 @@ export default async function CrewProfilPage({ searchParams }: { searchParams: S
 
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE))
 
+  type ItineraryGroup = {
+    event: { id: string; title: string; date: Date; location: string }
+    buses: string[]
+    rows: ItineraryRow[]
+  }
+
+  let itineraryGroups: ItineraryGroup[] = []
+  if (tab === 'itinerary') {
+    const workers = await prisma.busWorker.findMany({
+      where: { userId },
+      select: {
+        bus: {
+          select: {
+            name: true,
+            event: { select: { id: true, title: true, date: true, location: true, panduanItinerary: true } },
+          },
+        },
+      },
+    })
+    const groupMap = new Map<string, { event: ItineraryGroup['event']; buses: Set<string>; rows: ItineraryRow[] }>()
+    for (const w of workers) {
+      const ev = w.bus.event
+      let group = groupMap.get(ev.id)
+      if (!group) {
+        group = {
+          event: { id: ev.id, title: ev.title, date: ev.date, location: ev.location },
+          buses: new Set(),
+          rows: parseItinerary(ev.panduanItinerary),
+        }
+        groupMap.set(ev.id, group)
+      }
+      group.buses.add(w.bus.name)
+    }
+    itineraryGroups = [...groupMap.values()].map((g) => ({ event: g.event, buses: [...g.buses], rows: g.rows }))
+  }
+
   const deel = 'flex-1 rounded-xl px-4 py-2 text-center text-xs font-bold transition-colors duration-200'
   const tabClass = (active: boolean) =>
     active ? `${deel} bg-[#f5b915] text-[#1d2733]` : `${deel} text-white/70 hover:bg-white/10 hover:text-white`
@@ -96,6 +134,7 @@ export default async function CrewProfilPage({ searchParams }: { searchParams: S
               </p>
               <h1 className="mt-0.5 flex items-center gap-1.5 text-left text-lg font-bold text-white">
                 <CircleUserRound size={17} /> Profile {tab === 'riwayat' && <>&amp; Riwayat</>}
+                {tab === 'itinerary' && <>&amp; Itinerary</>}
               </h1>
             </div>
           </div>
@@ -120,11 +159,71 @@ export default async function CrewProfilPage({ searchParams }: { searchParams: S
           >
             <History size={13} /> Riwayat
           </Link>
+          <Link
+            href="/crew/profil?tab=itinerary"
+            className={`${tabClass(tab === 'itinerary')} inline-flex items-center justify-center gap-1`}
+          >
+            <Route size={13} /> Itinerary
+          </Link>
         </div>
 
         <div className="mt-5">
           {tab === 'profile' ? (
             <CrewProfileEditor initial={user} />
+          ) : tab === 'itinerary' ? (
+            itineraryGroups.length === 0 ? (
+              <div className="rounded-2xl border border-[#dfe4e8] bg-white p-6 text-center">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#eef4fb]">
+                  <Route size={22} className="text-[#1b4f9c]" />
+                </div>
+                <p className="mt-3 text-sm font-bold text-[#1b3555]">Belum Ada Itinerary</p>
+                <p className="mt-1 text-xs leading-relaxed text-[#657080]">
+                  Kamu belum terdaftar di armada/event sehingga belum ada itinerary untuk ditampilkan.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {itineraryGroups.map((group) => (
+                  <div key={group.event.id} className="rounded-2xl border border-[#dfe4e8] bg-white p-4">
+                    <h3 className="text-base font-bold text-[#1b3555]">{group.event.title}</h3>
+                    <p className="mt-1 flex items-center gap-1 text-xs text-[#657080]">
+                      <CalendarDays size={13} className="text-[#2ca84a]" /> {formatWaktuLengkap(group.event.date)}
+                      {group.event.location && <> · {group.event.location}</>}
+                    </p>
+                    <p className="mt-2 inline-flex items-center gap-1 rounded-full bg-[#eef4fb] px-2.5 py-1 text-[11px] font-bold text-[#1b4f9c]">
+                      <CircleUserRound size={11} /> {group.buses.join(', ')}
+                    </p>
+
+                    {group.rows.length === 0 ? (
+                      <p className="mt-3 rounded-xl bg-[#f8fafc] px-4 py-3 text-xs text-[#657080]">
+                        Itinerary belum diisi untuk {group.event.title}.
+                      </p>
+                    ) : (
+                      <div className="mt-4 overflow-x-auto">
+                        <table className="w-full border-collapse text-left text-sm">
+                          <thead>
+                            <tr className="border-b border-[#dfe4e8] text-[11px] font-bold uppercase tracking-wide text-[#657080]">
+                              <th className="px-2 py-2">Waktu</th>
+                              <th className="px-2 py-2">Agenda</th>
+                              <th className="px-2 py-2">Keterangan</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {group.rows.map((row, i) => (
+                              <tr key={`${row.time}-${i}`} className="border-b border-[#f1f3f5] last:border-0">
+                                <td className="whitespace-nowrap px-2 py-2.5 font-bold text-[#1b4f9c]">{row.time}</td>
+                                <td className="px-2 py-2.5 font-semibold text-[#1b3555]">{row.agenda}</td>
+                                <td className="px-2 py-2.5 text-[#657080]">{row.keterangan || '–'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )
           ) : (
             <CrewRiwayatList
               basePath="/crew/profil"

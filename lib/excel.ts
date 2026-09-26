@@ -188,4 +188,20 @@ export const eventSchema = z.object({
   location: z.string().trim().default(''),
   status: z.enum(['DRAFT', 'ACTIVE', 'CLOSED']).default('ACTIVE'),
   note: z.string().trim().nullish(),
+  panduanItinerary: z.string().trim().nullish(),
+  crewName: z.string().trim().nullish(),
+  crewPhone: z.string().trim().nullish(),
+  crewPhotoUrl: z.string().trim().nullish(),
+})
+
+export const eventPatchSchema = z.object({
+  title: z.string().trim().min(1, 'Judul wajib diisi').optional(),
+  date: z.string().min(1, 'Tanggal wajib diisi').optional(),
+  location: z.string().trim().optional(),
+  status: z.enum(['DRAFT', 'ACTIVE', 'CLOSED']).optional(),
+  note: z.string().trim().nullish(),
+  panduanItinerary: z.string().trim().nullish(),
+  crewName: z.string().trim().nullish(),
+  crewPhone: z.string().trim().nullish(),
+  crewPhotoUrl: z.string().trim().nullish(),
 })

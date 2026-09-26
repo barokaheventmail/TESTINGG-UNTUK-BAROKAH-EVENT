@@ -2,6 +2,7 @@ import Link from 'next/link'
 
 export const EVENT_TABS = [
   { id: 'ringkasan', label: 'Ringkasan' },
+  { id: 'panduan', label: 'Panduan' },
   { id: 'peserta', label: 'Peserta' },
   { id: 'armada', label: 'Bus & Armada' },
   { id: 'riwayat', label: 'Riwayat' },

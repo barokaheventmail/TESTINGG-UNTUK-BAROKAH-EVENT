@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { prisma } from '@/lib/db'
-import { Navbar } from '@/components/site'
+import { EventNavbar } from '@/components/event-navbar'
 import { EventTickets } from '@/components/event-tickets'
 
 export const metadata: Metadata = { title: 'Detail Event – Barokah Tour and Travel', robots: { index: false } }
@@ -60,13 +60,9 @@ export default async function EventPage({ params, searchParams }: { params: Prom
 
   return (
     <main className="min-h-screen bg-[#f4f7fa] pb-8">
-      {/* Navbar yang sama dengan beranda. alwaysSolid karena latar halaman ini
-          terang (#f4f7fa) -- tanpa itu gradasi navy tidak muncul dan teks putih
-          tak terbaca. homeAnchors={false} supaya "Beranda"/"Event"/"Kontak"
-          menunjuk ke section di beranda, bukan ke anchor yang tidak ada di sini. */}
-      <Navbar alwaysSolid homeAnchors={false} />
+      <EventNavbar eventId={event.id} />
 
-      <div className="mx-auto w-full max-w-3xl px-4 pt-24">
+      <div className="mx-auto w-full max-w-3xl px-4 py-6">
         <EventTickets
           eventId={event.id}
           eventTitle={event.title}
