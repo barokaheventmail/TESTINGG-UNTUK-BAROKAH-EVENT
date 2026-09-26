@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { prisma } from '@/lib/db'
-import { BackLink, Logo } from '@/components/site'
+import { Navbar } from '@/components/site'
 import { EventTickets } from '@/components/event-tickets'
 
 export const metadata: Metadata = { title: 'Detail Event – Barokah Tour and Travel', robots: { index: false } }
@@ -60,16 +60,13 @@ export default async function EventPage({ params, searchParams }: { params: Prom
 
   return (
     <main className="min-h-screen bg-[#f4f7fa] pb-8">
-      {/* Topbar sticky: sama dengan /panduan, jadi tidak ikut ter-scroll.
-          Padding dipindah ke <div> konten supaya header menempel rata di atas. */}
-      <header className="sticky top-0 z-50 border-b bg-white shadow-[0_2px_14px_-8px_rgba(27,53,85,0.45)]">
-        <div className="container-wide flex h-[76px] items-center justify-between">
-          <Logo />
-          <BackLink href="/" />
-        </div>
-      </header>
+      {/* Navbar yang sama dengan beranda. alwaysSolid karena latar halaman ini
+          terang (#f4f7fa) -- tanpa itu gradasi navy tidak muncul dan teks putih
+          tak terbaca. homeAnchors={false} supaya "Beranda"/"Event"/"Kontak"
+          menunjuk ke section di beranda, bukan ke anchor yang tidak ada di sini. */}
+      <Navbar alwaysSolid homeAnchors={false} />
 
-      <div className="mx-auto w-full max-w-3xl px-4 pt-8">
+      <div className="mx-auto w-full max-w-3xl px-4 pt-24">
         <EventTickets
           eventId={event.id}
           eventTitle={event.title}

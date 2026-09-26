@@ -4,13 +4,43 @@ import Link from 'next/link'
 import { ArrowLeft, ArrowRight, Check, ChevronDown, Clock3, MapPin, Menu, Phone, Star, Users, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
-export function Logo({ light=false }: { light?: boolean }) {
-  return <Link href="/" className="flex items-center" aria-label="Barokah Tour and Travel">
-    <img src="/logo.png" alt="Barokah Tour and Travel" width={467} height={160} className="h-10 w-auto object-contain" />
-  </Link>
+export function Logo({ light=false, className='h-10 w-auto' }: { light?: boolean; className?: string }) {
+  // `light` = dipakai di atas latar gelap (navbar & footer beranda). Logo 1
+  // aslinya bertinta navy gelap, jadi mustahil terbaca di sana (~1.2-1.9:1),
+  // sementara logo 2 sudah putih + emas sejak desainnya -- cocok untuk navy
+  // (putih 10.6-16.3:1). Permukaan terang (/panduan, /event, admin, not-found)
+  // memakai logo 1 yang gelap, karena logo 2 putih akan hilang di atas putih.
+  return (
+    <Link href="/" aria-label="Barokah Tour and Travel" className="flex shrink-0 items-center">
+      <img
+        src={light ? '/logo-barokah-event-2.png' : '/logo-barokah-event.png'}
+        alt="Barokah Tour and Travel"
+        width={640}
+        height={213}
+        className={`${className} object-contain`}
+      />
+    </Link>
+  )
 }
 
-export function Navbar({ alwaysSolid = false }: { alwaysSolid?: boolean }) {
+// Anchor harus relatif ("#event") saat navbar berada di beranda, karena section
+//-nya ada di halaman itu. Di halaman lain (mis. detail event) anchor relatif
+// akan jadi "/event/[id]#event" -- hash yang tidak ada elemennya, jadi kliknya
+// diam saja. Karena itu href-nya bisa dipaksa absolut lewat homeAnchors={false}.
+const NAV_LINKS = [
+  { label: 'Beranda', anchor: 'beranda' },
+  { label: 'Event', anchor: 'event' },
+  { label: 'Panduan Peserta', href: '/panduan' },
+  { label: 'Tentang Kami', href: '/#tentang' },
+  { label: 'Kontak', anchor: 'kontak' },
+] as const
+
+function navHref(link: (typeof NAV_LINKS)[number], homeAnchors: boolean) {
+  if ('href' in link) return link.href
+  return homeAnchors ? `#${link.anchor}` : `/#${link.anchor}`
+}
+
+export function Navbar({ alwaysSolid = false, homeAnchors = true }: { alwaysSolid?: boolean; homeAnchors?: boolean }) {
   const [open, setOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
 
@@ -25,6 +55,8 @@ export function Navbar({ alwaysSolid = false }: { alwaysSolid?: boolean }) {
   // punya banner gelap di belakang -- gradasi harus langsung tampil agar teks
   // putih tetap terbaca, bukan menunggu scroll.
   const solid = alwaysSolid || scrolled
+
+  const links = NAV_LINKS.map((l) => [l.label, navHref(l, homeAnchors)] as const)
 
   return (
     <header className="fixed inset-x-0 top-0 z-[70] text-white">
@@ -46,11 +78,11 @@ export function Navbar({ alwaysSolid = false }: { alwaysSolid?: boolean }) {
       <div className="container-wide relative flex h-[76px] items-center justify-between">
         <Logo light />
         <nav className="desktop-nav flex items-center gap-7 text-sm font-semibold">
-          {([['Beranda','#beranda'],['Event','#event'],['Panduan Peserta','/panduan'],['Tentang Kami','/#tentang'],['Kontak','#kontak']] as const).map(([label, href]) => (
-            <Link key={label as string} href={href as string} onClick={()=>setOpen(false)} className="group relative inline-block whitespace-nowrap text-sm font-semibold transition-colors duration-300 hover:text-[#f5b915]">
-              <span aria-hidden className="invisible tracking-widest">{label as string}</span>
+          {links.map(([label, href]) => (
+            <Link key={label} href={href} onClick={()=>setOpen(false)} className="group relative inline-block whitespace-nowrap text-sm font-semibold transition-colors duration-300 hover:text-[#f5b915]">
+              <span aria-hidden className="invisible tracking-widest">{label}</span>
               <span className="absolute inset-0 flex items-center justify-center tracking-normal transition-[letter-spacing] duration-300 ease-out group-hover:tracking-widest">
-                {label as string}
+                {label}
               </span>
               <span className="absolute -bottom-1 left-0 h-[2px] w-full origin-center scale-x-0 rounded-full bg-[#f5b915] transition-transform duration-300 ease-out group-hover:scale-x-100" />
             </Link>
@@ -65,11 +97,9 @@ export function Navbar({ alwaysSolid = false }: { alwaysSolid?: boolean }) {
       <div className={`fixed inset-0 z-50 bg-[#09204a]/50 backdrop-blur-sm transition-opacity duration-300 sm:hidden ${open ? 'opacity-100' : 'pointer-events-none opacity-0'}`} onClick={()=>setOpen(false)} aria-hidden />
       <nav className={`absolute left-0 right-0 top-[76px] z-[60] mx-auto w-[min(1120px,calc(100%-2rem))] rounded-2xl border border-[#dfe4e8] bg-white p-4 text-[#1d2733] shadow-2xl transition-all duration-300 sm:hidden ${open ? 'translate-y-0 opacity-100' : 'pointer-events-none -translate-y-3 opacity-0'}`}>
         <div className="flex flex-col divide-y divide-[#f1f3f5] text-sm font-semibold">
-          <Link href="#beranda" onClick={()=>setOpen(false)} className="-mx-3 rounded-lg px-3 py-3 transition-colors duration-200 hover:bg-[#f1f3f5]">Beranda</Link>
-          <Link href="#event" onClick={()=>setOpen(false)} className="-mx-3 rounded-lg px-3 py-3 transition-colors duration-200 hover:bg-[#f1f3f5]">Event</Link>
-          <Link href="/panduan" onClick={()=>setOpen(false)} className="-mx-3 rounded-lg px-3 py-3 transition-colors duration-200 hover:bg-[#f1f3f5]">Panduan Peserta</Link>
-          <Link href="/#tentang" onClick={()=>setOpen(false)} className="-mx-3 rounded-lg px-3 py-3 transition-colors duration-200 hover:bg-[#f1f3f5]">Tentang Kami</Link>
-          <Link href="#kontak" onClick={()=>setOpen(false)} className="-mx-3 rounded-lg px-3 py-3 transition-colors duration-200 hover:bg-[#f1f3f5]">Kontak</Link>
+          {links.map(([label, href]) => (
+            <Link key={label} href={href} onClick={()=>setOpen(false)} className="-mx-3 rounded-lg px-3 py-3 transition-colors duration-200 hover:bg-[#f1f3f5]">{label}</Link>
+          ))}
         </div>
         <a href="https://wa.me/6285930005544" className="mt-4 flex items-center justify-center gap-2 rounded-lg bg-[#f5b915] px-4 py-2.5 text-sm font-bold text-[#1d2733] transition-colors duration-200 hover:bg-[#e4aa09]"><Phone size={15}/> Hubungi Kami</a>
       </nav>
