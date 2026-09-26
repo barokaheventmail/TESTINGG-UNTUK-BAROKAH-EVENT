@@ -96,7 +96,7 @@ function ArmadaPicker({
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-haspopup="listbox"
-        className="flex w-full items-center gap-3 rounded-2xl bg-[linear-gradient(100deg,#071e3d_0%,#163d78_100%)] px-4 py-3 text-left text-white shadow-[0_14px_32px_-14px_rgba(9,32,74,0.95)] transition-shadow duration-300 hover:shadow-[0_18px_38px_-14px_rgba(9,32,74,1)]"
+        className="flex w-full items-center gap-3 rounded-2xl bg-[linear-gradient(100deg,#071e3d_0%,#163d78_100%)] px-4 py-3 pr-20 text-left text-white shadow-[0_14px_32px_-14px_rgba(9,32,74,0.95)] transition-shadow duration-300 hover:shadow-[0_18px_38px_-14px_rgba(9,32,74,1)]"
       >
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15">
           <Bus size={17} />
@@ -115,26 +115,6 @@ function ArmadaPicker({
               : `${totalCrew} crew di ${selectedIds.length} bus terpilih`}
           </span>
         </span>
-        {selectedIds.length > 0 && (
-          <span
-            onClick={(e) => {
-              e.stopPropagation()
-              onClear()
-            }}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.stopPropagation()
-                onClear()
-              }
-            }}
-            title="Batalkan semua pilihan"
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/15 transition-colors duration-200 hover:bg-white/30"
-          >
-            <X size={13} />
-          </span>
-        )}
         <span
           className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/15 transition-transform duration-300 ease-out ${
             open ? 'rotate-180' : ''
@@ -143,6 +123,20 @@ function ArmadaPicker({
           <ChevronDown size={14} />
         </span>
       </button>
+
+      {/* Tombol X ini sengaja jadi saudara trigger, bukan anaknya: elemen
+          interaktif di dalam <button> itu HTML tidak valid. */}
+      {selectedIds.length > 0 && (
+        <button
+          type="button"
+          onClick={onClear}
+          title="Batalkan semua pilihan"
+          aria-label="Batalkan semua pilihan"
+          className="absolute right-11 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-white transition-colors duration-200 hover:bg-white/30"
+        >
+          <X size={13} />
+        </button>
+      )}
 
       {/* Tanpa `transform`/`filter` agar tidak menjadi blok penampung posisi
           untuk elemen `fixed` di dalam panel. */}

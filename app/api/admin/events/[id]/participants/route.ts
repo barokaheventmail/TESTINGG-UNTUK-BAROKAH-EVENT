@@ -28,6 +28,13 @@ export async function GET(request: NextRequest, { params }: Params) {
   const sp = request.nextUrl.searchParams
   const q = (sp.get('q') ?? '').trim().slice(0, 100)
   const busId = (sp.get('busId') ?? '').trim().slice(0, 100)
+  // Filter multi-bus: "busIds=<id1>,<id2>,...". Param `busId` tunggal lama
+  // tetap diterima supaya tidak memutus pemanggil yang sudah ada.
+  const busIds = (sp.get('busIds') ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0)
+    .slice(0, 500)
   const status = sp.get('status') ?? 'all'
 
   const rawTake = Number(sp.get('take') ?? '200')
@@ -36,7 +43,9 @@ export async function GET(request: NextRequest, { params }: Params) {
   const skip = Number.isFinite(rawSkip) ? Math.max(0, Math.floor(rawSkip)) : 0
 
   const where: Prisma.ParticipantWhereInput = { eventId: id }
-  if (busId && busId !== 'all') where.busId = busId
+  if (busIds.length === 1) where.busId = busIds[0]
+  else if (busIds.length > 1) where.busId = { in: busIds }
+  else if (busId && busId !== 'all') where.busId = busId
   if (status === 'attended') where.scannedAt = { not: null }
   else if (status === 'pending') where.scannedAt = null
   if (q) {
@@ -60,7 +69,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     }),
     prisma.participant.count({ where }),
   ])
-  logger.info('admin participants list', { eventId: id, by: session.username, q, busId, status, take, skip, hits: total })
+  logger.info('admin participants list', { eventId: id, by: session.username, q, busId, busIds: busIds.length, status, take, skip, hits: total })
 
   return NextResponse.json({
     items: items.map((p) => ({
