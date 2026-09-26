@@ -59,3 +59,33 @@ input[type='number'] { -moz-appearance:textfield; appearance:textfield; }
 .trust-marquee-group { display:flex; align-items:center; gap:2.5rem; flex-shrink:0; padding-inline:1.25rem; white-space:nowrap; }
 .trust-marquee:hover .trust-marquee-track { animation-play-state:paused; }
 @keyframes trustMarquee { from { transform:translate3d(0, 0, 0); } to { transform:translate3d(-20%, 0, 0); } }
+
+/* Agenda perjalanan: event card polish. Visual only - no font or data changes. */
+.event-card {
+  background-image: linear-gradient(168deg, #1b4f9c 0%, #123575 48%, #0d2850 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 1px 2px rgba(13, 40, 80, 0.24),
+    0 22px 46px -28px rgba(13, 40, 80, 0.62);
+}
+.event-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 34%, rgba(245, 185, 21, 0.16) 50%, transparent 66%);
+  opacity: 0;
+}
+.event-card:hover {
+  border-color: rgba(245, 185, 21, 0.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    0 2px 6px rgba(13, 40, 80, 0.3),
+    0 44px 74px -32px rgba(13, 40, 80, 0.72),
+    0 0 0 1px rgba(245, 185, 21, 0.14);
+}
+.event-card:hover::after { opacity: 1; animation: eventSheen 1.15s ease-out; }
+@keyframes eventSheen { from { transform: translateX(-115%); } to { transform: translateX(115%); } }
+@media (prefers-reduced-motion: reduce) {
+  .event-card:hover::after { animation: none; }
+}

@@ -75,7 +75,9 @@ export default function Guide() {
   const departDate = formatDate(upcomingSaturday())
   return (
     <main className="min-h-screen bg-[#f4f7fa] pb-12">
-      <header className="border-b bg-white">
+      {/* sticky top-0 => topbar tetap menempel di atas saat halaman di-scroll.
+          Karena masih in-flow, tidak perlu padding tambahan di <main>. */}
+      <header className="sticky top-0 z-50 border-b bg-white shadow-[0_2px_14px_-8px_rgba(27,53,85,0.45)]">
         <div className="container-wide flex h-[76px] items-center justify-between">
           <Logo />
           <BackLink />

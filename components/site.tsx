@@ -10,11 +10,40 @@ export function Logo({ light=false }: { light?: boolean }) {
   </Link>
 }
 
-export function Navbar() {
+export function Navbar({ alwaysSolid = false }: { alwaysSolid?: boolean }) {
   const [open, setOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 24)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  // alwaysSolid: untuk halaman berlatar terang (mis. detail event) yang tidak
+  // punya banner gelap di belakang -- gradasi harus langsung tampil agar teks
+  // putih tetap terbaca, bukan menunggu scroll.
+  const solid = alwaysSolid || scrolled
+
   return (
-    <header className="absolute top-0 z-[70] w-full bg-transparent text-white">
-      <div className="container-wide flex h-[76px] items-center justify-between">
+    <header className="fixed inset-x-0 top-0 z-[70] text-white">
+      {/* Lapisan gradasi mewah: navy tua -> brand blue.
+          Dipakai sebagai span terpisah (bukan background pada header) supaya
+          gradasi bisa dianimasikan -- background-image tidak bisa dianimasikan
+          oleh transition-colors.
+          Efek masuk: panel gradasi turun dari atas (-translate-y-full -> 0)
+          sambil fade in. Logo & menu sengaja tidak ikut bergerak, hanya
+          latarnya yang turun. */}
+      <span
+        aria-hidden
+        className={`pointer-events-none absolute inset-0 bg-gradient-to-r from-[#071e3d] via-[#0d2850] to-[#163d78] transition-[opacity,transform] duration-700 ease-out ${
+          solid
+            ? 'translate-y-0 opacity-100 shadow-[0_12px_34px_-20px_rgba(9,32,74,0.95)] backdrop-blur-md'
+            : '-translate-y-full opacity-0'
+        }`}
+      />
+      <div className="container-wide relative flex h-[76px] items-center justify-between">
         <Logo light />
         <nav className="desktop-nav flex items-center gap-7 text-sm font-semibold">
           {([['Beranda','#beranda'],['Event','#event'],['Panduan Peserta','/panduan'],['Tentang Kami','/#tentang'],['Kontak','#kontak']] as const).map(([label, href]) => (
@@ -27,7 +56,7 @@ export function Navbar() {
             </Link>
           ))}
         </nav>
-        <a href="https://wa.me/6285930005544" className="hidden items-center gap-2 rounded-md bg-[#f5b915] px-4 py-2.5 text-sm font-bold text-[#1d2733] transition-colors duration-200 hover:bg-[#e4aa09] sm:flex"><Phone size={15}/> Hubungi Kami</a>
+        <a href="https://wa.me/6285930005544" className="group hidden items-center gap-2 rounded-full bg-gradient-to-r from-[#f9dc8c] via-[#f5b915] to-[#d9a40c] px-4 py-2.5 text-[13px] font-bold text-[#1d2733] shadow-[0_8px_20px_-12px_rgba(245,185,21,0.95)] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-[0_16px_30px_-12px_rgba(245,185,21,1)] hover:brightness-105 sm:flex"><Phone size={14} className="transition-transform duration-300 group-hover:-rotate-12"/> Hubungi Kami</a>
         <button type="button" className="relative z-[70] flex h-10 w-10 items-center justify-center sm:hidden" onClick={()=>setOpen(!open)} aria-label={open ? 'Tutup menu' : 'Buka menu'} aria-expanded={open}>
           <span className={`absolute transition-all duration-300 ${open ? 'rotate-90 scale-75 opacity-0' : 'opacity-100'}`}><Menu /></span>
           <span className={`absolute transition-all duration-300 ${open ? 'opacity-100' : '-rotate-90 opacity-0'}`}><X /></span>
@@ -49,10 +78,11 @@ export function Navbar() {
 }
 
 export function BackLink({ href='/', label='Kembali' }: { href?: string; label?: string }) {
-  return <Link href={href} className="group inline-flex w-fit items-center gap-2 text-sm font-bold text-[#1b4f9c] transition-colors duration-200 hover:text-[#143d79]">
-    <ArrowLeft size={16} className="transition-transform duration-200 group-hover:-translate-x-1" />
+  return <Link href={href} className="group inline-flex w-fit items-center gap-2.5 rounded-full bg-gradient-to-r from-[#071e3d] via-[#0d2850] to-[#163d78] px-5 py-2.5 text-[13px] font-bold tracking-wide text-white shadow-[0_10px_26px_-14px_rgba(13,40,80,0.9)] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-[0_18px_34px_-14px_rgba(13,40,80,1)]">
+    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#f5b915] text-[#1d2733] transition-transform duration-300 ease-out group-hover:-translate-x-0.5">
+      <ArrowLeft size={13} strokeWidth={2.5} />
+    </span>
     {label}
-    <span className="mt-1 h-[2px] w-0 origin-left rounded-full bg-[#1b4f9c] transition-all duration-200 group-hover:w-full" />
   </Link>
 }
 

@@ -61,31 +61,54 @@ export default async function Home() {
 
       <TrustStrip />
 
-      <section id="event" className="container-wide py-20">
-        <div className="mb-10 max-w-2xl">
-          <p className="eyebrow mb-2">Agenda perjalanan</p>
-          <h2 className="text-3xl font-bold text-[#1b3555] md:text-4xl">Event</h2>
-          <p className="mt-3 leading-relaxed text-[#657080]">
-            Event perjalanan yang sedang berlangsung, dikelola langsung oleh admin. Pilih event untuk melihat rincian
-            bus dan peserta.
-          </p>
-        </div>
-        {events.length > 0 ? (
-          <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-4">
-            {events.map((event) => (
-              <EventCard key={event.id} event={event} />
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-2xl border border-dashed border-[#dfe4e8] bg-white p-10 text-center shadow-sm">
-            <CalendarDays className="mx-auto text-[#b9c4d2]" size={32} />
-            <p className="mt-3 text-sm font-bold text-[#1b3555]">Belum ada event</p>
-            <p className="mx-auto mt-1 max-w-md text-xs leading-relaxed text-[#657080]">
-Admin belum menambahkan event. Anda tetap bisa mengecek tiket &amp; QR peserta lewat halaman event saat
-                tersedia.
+      <section id="event" className="relative overflow-hidden border-t border-[#eae7dd] py-24">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{
+            backgroundImage:
+              'radial-gradient(ellipse 44% 38% at 6% 0%, rgba(245,185,21,0.16) 0%, rgba(245,185,21,0) 70%), radial-gradient(ellipse 50% 46% at 100% 100%, rgba(27,53,85,0.10) 0%, rgba(27,53,85,0) 72%)',
+          }}
+        />
+        <div className="container-wide relative">
+          <div className="mb-14 max-w-2xl">
+            <span className="inline-flex items-center gap-3">
+              <span aria-hidden className="h-px w-12 bg-gradient-to-r from-[#f5b915] to-transparent" />
+              <span className="eyebrow !text-[#a97c07]">Agenda perjalanan</span>
+            </span>
+            <h2 className="mt-5 text-4xl font-bold leading-none tracking-[-0.03em] text-[#1b3555] md:text-[3.25rem]">
+              Event
+            </h2>
+            <span aria-hidden className="mt-6 block h-px w-24 bg-gradient-to-r from-[#1b3555]/25 to-transparent" />
+            <p className="mt-6 text-[15px] leading-[1.75] text-[#657080]">
+              Event perjalanan yang sedang berlangsung, dikelola langsung oleh admin. Pilih event untuk melihat
+              rincian bus dan peserta.
             </p>
           </div>
-        )}
+          {events.length > 0 ? (
+            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+              {events.map((event) => (
+                <EventCard key={event.id} event={event} />
+              ))}
+            </div>
+          ) : (
+            <div className="relative overflow-hidden rounded-2xl border border-dashed border-[#e0dccd] bg-white/60 p-14 text-center">
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-0"
+                style={{
+                  backgroundImage: 'radial-gradient(ellipse 55% 55% at 50% 0%, rgba(245,185,21,0.1) 0%, rgba(245,185,21,0) 72%)',
+                }}
+              />
+              <CalendarDays className="relative mx-auto text-[#c9c2ab]" size={30} />
+              <p className="relative mt-4 text-lg font-bold text-[#1b3555]">Belum ada event</p>
+              <p className="relative mx-auto mt-2 max-w-md text-xs leading-relaxed text-[#657080]">
+                Admin belum menambahkan event. Anda tetap bisa mengecek tiket &amp; QR peserta lewat halaman event saat
+                tersedia.
+              </p>
+            </div>
+          )}
+        </div>
       </section>
 
       <div className="relative overflow-hidden bg-[#edf5ef]">

@@ -10,8 +10,10 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronUp,
+  Info,
   ListChecks,
   MapPin,
+  Search,
   Users,
 } from 'lucide-react'
 import { TicketSearch, type TicketSearchHandle } from '@/components/ticket-search'
@@ -40,7 +42,7 @@ function SlideRow({ children }: { children: React.ReactNode }) {
         type="button"
         aria-label="Geser daftar bus ke kiri"
         onClick={() => slide(-1)}
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#dfe4e8] bg-white p-0 text-[#1b4f9c] shadow-sm transition-colors duration-150 hover:bg-[#eef3fb]"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#e2e8ef] bg-white p-0 text-[#163d78] shadow-sm transition-all duration-200 hover:border-[#163d78]/30 hover:bg-[#eef3fb]"
       >
         <ChevronLeft size={16} />
       </button>
@@ -51,7 +53,7 @@ function SlideRow({ children }: { children: React.ReactNode }) {
         type="button"
         aria-label="Geser daftar bus ke kanan"
         onClick={() => slide(1)}
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#dfe4e8] bg-white p-0 text-[#1b4f9c] shadow-sm transition-colors duration-150 hover:bg-[#eef3fb]"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#e2e8ef] bg-white p-0 text-[#163d78] shadow-sm transition-all duration-200 hover:border-[#163d78]/30 hover:bg-[#eef3fb]"
       >
         <ChevronRight size={16} />
       </button>
@@ -153,6 +155,15 @@ export function EventTickets({
   const selectAllBuses = () => setFilter(allBusIds)
   const clearBuses = () => setFilter([])
 
+  // Persentase kehadiran untuk progress bar pada kartu "Hadir".
+  const attendPct = total > 0 ? Math.min(100, Math.round((attended / total) * 100)) : 0
+
+  // Kosongkan pilihan tanpa menutup panel, dipakai kartu "Semua Bus" di dalam grid.
+  const showAllBuses = () => {
+    setBusSelection([])
+    setExpandedBusIds(new Set())
+  }
+
   const toggleExpand = (busId: string) => {
     const willExpand = !expandedBusIds.has(busId)
     setExpandedBusIds((prev) => {
@@ -166,62 +177,147 @@ export function EventTickets({
 
   return (
     <>
-      <div className="mt-4 rounded-2xl border border-[#dfe4e8] bg-white p-6 shadow-lg">
-        <h2 className="text-sm font-bold text-[#1b3555]">Cari Nama Peserta</h2>
-        <p className="mt-0.5 mb-4 text-xs text-[#657080]">Ketik nama Anda untuk melihat tiket &amp; QR di event ini.</p>
-        <TicketSearch ref={searchRef} eventId={eventId} busIds={busSelection} initialQuery={initialQuery} />
-      </div>
-
-      <div className="mt-4 overflow-hidden rounded-2xl border border-[#dfe4e8] bg-white shadow-lg">
+      {/* Hero mewah: gradasi navy + semburat emas + pola titik halus */}
+      <div className="relative overflow-hidden rounded-3xl bg-[linear-gradient(135deg,#071e3d_0%,#0d2850_45%,#163d78_100%)] shadow-[0_24px_60px_-32px_rgba(9,32,74,0.95)]">
         <div
-          className={`relative ${imageUrl ? 'bg-cover bg-center' : 'bg-gradient-to-br from-[#1b4f9c] to-[#163d78]'}`}
-          style={imageUrl ? { backgroundImage: `url('${imageUrl}')` } : undefined}
-        >
-          {imageUrl && (
+          aria-hidden
+          className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-[radial-gradient(circle,rgba(245,185,21,0.30),transparent_68%)]"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-[0.07]"
+          style={{
+            backgroundImage: 'radial-gradient(circle at 1px 1px, #ffffff 1px, transparent 0)',
+            backgroundSize: '22px 22px',
+          }}
+        />
+        {imageUrl && (
+          <>
             <div
               aria-hidden
-              className="absolute inset-0 bg-gradient-to-t from-[#1b4f9c]/20 via-[#123575]/60 to-[#0d2850]/95"
+              className="absolute inset-0 bg-cover bg-center"
+              style={{ backgroundImage: `url('${imageUrl}')` }}
             />
-          )}
-          <div className="relative px-6 py-8 text-white md:py-10">
-            <p className="text-xs font-bold uppercase tracking-wider text-white/60">
+            <div
+              aria-hidden
+              className="absolute inset-0 bg-gradient-to-t from-[#071e3d] via-[#0d2850]/90 to-[#0d2850]/75"
+            />
+          </>
+        )}
+
+        <div className="relative px-6 py-9 text-white md:px-10 md:py-12">
+          <div className="flex items-center gap-3">
+            <span className="h-px w-8 shrink-0 bg-gradient-to-r from-[#f9dc8c] to-[#d9a40c]" />
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#f5d79a]">
               Event Wisata · Barokah Tour &amp; Travel
             </p>
-            <h1 className="mt-1 text-2xl font-bold leading-tight">{eventTitle}</h1>
-            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-white/85">
-              <span className="flex items-center gap-1.5">
-                <CalendarDays size={14} /> {formatTanggalPendek(new Date(eventDate))}
+          </div>
+
+          <h1 className="mt-3 text-3xl font-bold leading-tight tracking-tight md:text-4xl">{eventTitle}</h1>
+
+          <div className="mt-5 flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/8 px-3.5 py-1.5 text-[13px] font-semibold text-white/90 backdrop-blur-sm">
+              <CalendarDays size={14} className="shrink-0 text-[#f5b915]" />
+              {formatTanggalPendek(new Date(eventDate))}
+            </span>
+            {eventLocation && (
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/8 px-3.5 py-1.5 text-[13px] font-semibold text-white/90 backdrop-blur-sm">
+                <MapPin size={14} className="shrink-0 text-[#f5b915]" />
+                {eventLocation}
               </span>
-              {eventLocation && (
-                <span className="flex items-center gap-1.5">
-                  <MapPin size={14} /> {eventLocation}
-                </span>
-              )}
-            </div>
-            <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-[#e6f4ea] px-3 py-1 text-xs font-bold text-[#2ca84a]">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#2ca84a]" /> Aktif
-            </div>
+            )}
+            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-300/25 bg-emerald-400/15 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-emerald-100 backdrop-blur-sm">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-300 opacity-75" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-300" />
+              </span>
+              Aktif
+            </span>
           </div>
         </div>
+      </div>
 
-        <div className="px-6 py-6">
-          {note && <p className="mb-5 rounded-xl bg-[#f8fafc] p-4 text-sm leading-relaxed text-[#44576d]">{note}</p>}
+      {/* Kartu konten */}
+      <div className="mt-4 overflow-hidden rounded-3xl border border-[#e8edf3] bg-white shadow-[0_18px_50px_-32px_rgba(27,53,85,0.5)]">
+        <div className="px-5 py-6 md:px-7">
+          {note && (
+            <div className="mb-6 flex gap-3.5 rounded-2xl border border-[#f0e2ba] bg-[linear-gradient(100deg,#fdf8ec_0%,#fcfbf6_100%)] p-4">
+              <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[linear-gradient(135deg,#f9dc8c_0%,#d9a40c_100%)] text-[#5a3f04] shadow-sm">
+                <Info size={15} />
+              </span>
+              <p className="text-sm leading-relaxed text-[#5b4a1f]">{note}</p>
+            </div>
+          )}
 
-          <div className="grid grid-cols-3 gap-3">
-            <div className="rounded-xl border border-[#dfe4e8] p-4 text-center">
-              <Bus className="mx-auto text-[#1b4f9c]" size={18} />
-              <p className="mt-1.5 text-xl font-black text-[#1b3555]">{busCount}</p>
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-[#9aa3af]">Bus</p>
+          <div className="grid grid-cols-3 gap-3 md:gap-4">
+            <div className="group relative overflow-hidden rounded-2xl border border-[#e8edf3] bg-white p-4 text-center shadow-[0_10px_30px_-18px_rgba(27,53,85,0.45)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_40px_-22px_rgba(27,53,85,0.55)] md:p-5">
+              <span
+                aria-hidden
+                className="absolute inset-x-0 top-0 h-0.5 bg-[linear-gradient(90deg,#f9dc8c_0%,#f5b915_50%,#d9a40c_100%)]"
+              />
+              <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#eef3fb_0%,#dae6f6_100%)] text-[#163d78]">
+                <Bus size={18} />
+              </span>
+              <p className="mt-2.5 text-2xl font-black tabular-nums tracking-tight text-[#0d2850] md:text-3xl">
+                {busCount}
+              </p>
+              <p className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[#9aa3af]">Bus</p>
             </div>
-            <div className="rounded-xl border border-[#dfe4e8] p-4 text-center">
-              <Users className="mx-auto text-[#1b4f9c]" size={18} />
-              <p className="mt-1.5 text-xl font-black text-[#1b3555]">{total}</p>
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-[#9aa3af]">Peserta</p>
+
+            <div className="group relative overflow-hidden rounded-2xl border border-[#e8edf3] bg-white p-4 text-center shadow-[0_10px_30px_-18px_rgba(27,53,85,0.45)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_40px_-22px_rgba(27,53,85,0.55)] md:p-5">
+              <span
+                aria-hidden
+                className="absolute inset-x-0 top-0 h-0.5 bg-[linear-gradient(90deg,#f9dc8c_0%,#f5b915_50%,#d9a40c_100%)]"
+              />
+              <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#eef3fb_0%,#dae6f6_100%)] text-[#163d78]">
+                <Users size={18} />
+              </span>
+              <p className="mt-2.5 text-2xl font-black tabular-nums tracking-tight text-[#0d2850] md:text-3xl">
+                {total}
+              </p>
+              <p className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[#9aa3af]">Peserta</p>
             </div>
-            <div className="rounded-xl border border-[#dfe4e8] p-4 text-center">
-              <BadgeCheck className="mx-auto text-[#2ca84a]" size={18} />
-              <p className="mt-1.5 text-xl font-black text-[#2ca84a]">{attended}</p>
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-[#9aa3af]">Hadir</p>
+
+            <div className="group relative overflow-hidden rounded-2xl border border-emerald-100 bg-[linear-gradient(180deg,#f2fbf5_0%,#ffffff_100%)] p-4 text-center shadow-[0_10px_30px_-18px_rgba(16,124,65,0.5)] transition-all duration-300 hover:-translate-y-0.5 md:p-5">
+              <span
+                aria-hidden
+                className="absolute inset-x-0 top-0 h-0.5 bg-[linear-gradient(90deg,#4ade80_0%,#059669_100%)]"
+              />
+              <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600">
+                <BadgeCheck size={18} />
+              </span>
+              <p className="mt-2.5 text-2xl font-black tabular-nums tracking-tight text-emerald-600 md:text-3xl">
+                {attended}
+              </p>
+              <p className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[#9aa3af]">Hadir</p>
+              <div className="mt-2.5 h-1 w-full overflow-hidden rounded-full bg-emerald-100">
+                <div
+                  className="h-full rounded-full bg-[linear-gradient(90deg,#4ade80_0%,#059669_100%)] transition-[width] duration-500"
+                  style={{ width: `${attendPct}%` }}
+                />
+              </div>
+              <p className="mt-1 text-[10px] font-bold tabular-nums text-emerald-700/70">{attendPct}%</p>
+            </div>
+          </div>
+
+          {/* Pencarian dipindah ke bawah hero agar alur baca lebih natural */}
+          <div className="mt-6 rounded-2xl border border-[#e8edf3] bg-[linear-gradient(180deg,#fbfcfe_0%,#ffffff_100%)] p-4 shadow-[0_10px_30px_-20px_rgba(27,53,85,0.4)] md:p-5">
+            <div className="flex items-center gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#071e3d_0%,#163d78_100%)] text-white shadow-[0_8px_20px_-10px_rgba(9,32,74,0.9)]">
+                <Search size={16} />
+              </span>
+              <div className="min-w-0">
+                <h2 className="text-sm font-bold text-[#0d2850]">Cari Nama Peserta</h2>
+                <p className="text-xs text-[#657080]">Ketik nama Anda untuk melihat tiket &amp; QR di event ini.</p>
+              </div>
+            </div>
+            <div className="mt-4">
+              <TicketSearch
+                ref={searchRef}
+                eventId={eventId}
+                busIds={busSelection}
+                initialQuery={initialQuery}
+              />
             </div>
           </div>
 
@@ -234,7 +330,7 @@ export function EventTickets({
                   aria-expanded={busDropdownOpen}
                   className="flex items-center gap-2 rounded-full border border-[#dfe4e8] bg-[#f8fafc] px-4 py-2 text-sm font-bold text-[#1b3555] transition-colors duration-150 hover:bg-[#eef3fb]"
                 >
-                  <Bus size={14} className="text-[#1b4f9c]" />
+                  <Bus size={14} className="text-[#163d78]" />
                   <span className="max-w-40 truncate">{filterLabel}</span>
                   {busDropdownOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                 </button>
@@ -246,14 +342,21 @@ export function EventTickets({
                     setBusDropdownOpen(false)
                   }}
                   aria-expanded={multiOpen}
-                  className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold transition-colors duration-150 ${
+                  className={`group flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold transition-all duration-200 ${
                     busSelection.length > 1
-                      ? 'border-[#2ca84a] bg-[#e6f4ea] text-[#247039]'
-                      : 'border-[#dfe4e8] bg-[#f8fafc] text-[#1b3555] hover:bg-[#eef3fb]'
+                      ? 'border-transparent bg-[linear-gradient(100deg,#071e3d_0%,#163d78_100%)] text-white shadow-[0_12px_28px_-12px_rgba(9,32,74,0.95)]'
+                      : multiOpen
+                        ? 'border-[#163d78] bg-[#eef3fb] text-[#0d2850]'
+                        : 'border-[#e2e8ef] bg-white text-[#1b3555] hover:border-[#163d78]/30 hover:bg-[#f6f9fd] hover:shadow-[0_10px_24px_-16px_rgba(27,53,85,0.7)]'
                   }`}
                 >
                   <ListChecks size={14} />
                   Pilih Banyak Bus
+                  {busSelection.length > 1 && (
+                    <span className="rounded-full bg-white/25 px-1.5 py-0.5 text-[11px] font-extrabold tabular-nums">
+                      {busSelection.length}
+                    </span>
+                  )}
                   {multiOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                 </button>
               </div>
@@ -268,8 +371,8 @@ export function EventTickets({
                       onClick={() => setFilter([])}
                       className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl border px-3 py-2 text-sm font-semibold transition-colors duration-150 ${
                         busSelection.length === 0
-                          ? 'border-[#1b4f9c] bg-[#eef3fb] text-[#1b4f9c]'
-                          : 'border-[#dfe4e8] bg-white text-[#1b3555] hover:bg-[#f1f6fd]'
+                          ? 'border-[#163d78] bg-[#eef3fb] text-[#0d2850]'
+                          : 'border-[#e2e8ef] bg-white text-[#1b3555] hover:border-[#163d78]/30 hover:bg-[#f5f9fd]'
                       }`}
                     >
                       Semua Bus
@@ -285,8 +388,8 @@ export function EventTickets({
                           onClick={() => setFilter([b.busId])}
                           className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl border px-3 py-2 text-sm font-semibold transition-colors duration-150 ${
                             selected
-                              ? 'border-[#1b4f9c] bg-[#eef3fb] text-[#1b4f9c]'
-                              : 'border-[#dfe4e8] bg-white text-[#1b3555] hover:bg-[#f1f6fd]'
+                              ? 'border-[#163d78] bg-[#eef3fb] text-[#0d2850]'
+                              : 'border-[#e2e8ef] bg-white text-[#1b3555] hover:border-[#163d78]/30 hover:bg-[#f5f9fd]'
                           }`}
                         >
                           {b.busName}
@@ -300,51 +403,112 @@ export function EventTickets({
               )}
 
               {multiOpen && (
-                <div className="mt-3 rounded-2xl border border-[#dfe4e8] bg-[#fbfcfd] p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-sm font-bold text-[#1b3555]">{busSelection.length} Bus Dipilih</p>
-                    <div className="flex flex-wrap gap-2">
+                <div className="mt-3 overflow-hidden rounded-2xl border border-[#dfe4e8] bg-white shadow-[0_14px_34px_-20px_rgba(27,53,85,0.45)]">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#eef1f4] bg-gradient-to-r from-[#f7fafd] to-[#eaf1fa] px-4 py-3">
+                    <div className="flex items-center gap-2.5">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[linear-gradient(135deg,#f9dc8c_0%,#d9a40c_100%)] text-[#5a3f04] shadow-sm">
+                        <ListChecks size={16} />
+                      </span>
+                      <div>
+                        <p className="text-sm font-bold text-[#1b3555]">
+                          {busSelection.length === 0
+                            ? 'Semua Bus'
+                            : `${busSelection.length} Bus Dipilih`}
+                        </p>
+                        <p className="text-[11px] text-[#7a8798]">
+                          {busSelection.length === 0
+                            ? `Menampilkan seluruh ${busOptions.length} bus`
+                            : `dari ${busOptions.length} bus tersedia`}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
                       <button
                         type="button"
                         onClick={selectAllBuses}
-                        className="rounded-full bg-[#e6f4ea] px-3 py-1.5 text-xs font-bold text-[#247039] transition-colors duration-150 hover:bg-[#d6ecdc]"
+                        className="rounded-full bg-[linear-gradient(100deg,#071e3d_0%,#163d78_100%)] px-3 py-1.5 text-xs font-bold text-white transition-all duration-200 hover:shadow-[0_10px_22px_-10px_rgba(9,32,74,0.95)]"
                       >
                         Pilih Semua
                       </button>
                       <button
                         type="button"
                         onClick={clearBuses}
-                        className="rounded-full bg-[#fdecec] px-3 py-1.5 text-xs font-bold text-[#c0392b] transition-colors duration-150 hover:bg-[#fadbd8]"
+                        disabled={busSelection.length === 0}
+                        className="rounded-full border border-[#e4e8ec] bg-white px-3 py-1.5 text-xs font-bold text-[#657080] transition-all duration-200 hover:border-[#e0a3a0] hover:bg-[#fdf1f0] hover:text-[#c0392b] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-[#e4e8ec] disabled:hover:bg-white disabled:hover:text-[#657080]"
                       >
-                        Hapus Semua Pilihan
+                        Hapus Semua
                       </button>
                     </div>
                   </div>
-                  <div className="mt-3">
-                    <SlideRow>
-                      {busOptions.map((b) => {
-                        const checked = busSelection.includes(b.busId)
-                        return (
-                          <label
-                            key={b.busId}
-                            className={`flex shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap rounded-xl border px-3 py-2 text-sm font-semibold transition-colors duration-150 ${
+
+                  <div className="grid gap-2 p-4 sm:grid-cols-2">
+                    <label
+                      className={`flex cursor-pointer select-none items-center gap-3 rounded-xl border px-3 py-2.5 transition-all duration-200 ${
+                        busSelection.length === 0
+                          ? 'border-[#163d78]/45 bg-[#eef3fb] shadow-[0_10px_24px_-16px_rgba(13,40,80,0.9)]'
+                          : 'border-[#e4e8ec] bg-white hover:border-[#163d78]/30 hover:bg-[#f7fafd]'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={busSelection.length === 0}
+                        onChange={showAllBuses}
+                        className="peer sr-only"
+                      />
+                      <span
+                        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-all duration-200 peer-focus-visible:ring-2 peer-focus-visible:ring-[#163d78]/40 peer-focus-visible:ring-offset-1 ${
+                          busSelection.length === 0
+                            ? 'border-[#163d78] bg-[#163d78] text-white'
+                            : 'border-[#cbd3db] bg-white text-transparent'
+                        }`}
+                      >
+                        <Check size={13} strokeWidth={3} />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-bold text-[#1b3555]">Semua Bus</span>
+                        <span className="block text-[11px] text-[#8b96a5]">{busOptions.length} bus</span>
+                      </span>
+                      <Users size={15} className="shrink-0 text-[#163d78]/50" />
+                    </label>
+
+                    {busOptions.map((b) => {
+                      const checked = busSelection.includes(b.busId)
+                      return (
+                        <label
+                          key={b.busId}
+                          className={`flex cursor-pointer select-none items-center gap-3 rounded-xl border px-3 py-2.5 transition-all duration-200 ${
+                            checked
+                              ? 'border-[#163d78]/45 bg-[#eef3fb] shadow-[0_10px_24px_-16px_rgba(13,40,80,0.9)]'
+                              : 'border-[#e4e8ec] bg-white hover:border-[#163d78]/30 hover:bg-[#f7fafd]'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleBus(b.busId)}
+                            className="peer sr-only"
+                          />
+                          <span
+                            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-all duration-200 peer-focus-visible:ring-2 peer-focus-visible:ring-[#163d78]/40 peer-focus-visible:ring-offset-1 ${
                               checked
-                                ? 'border-[#2ca84a] bg-[#e6f4ea] text-[#1b3555]'
-                                : 'border-[#dfe4e8] bg-white text-[#657080] hover:bg-[#f1f6fd]'
+                                ? 'border-[#163d78] bg-[#163d78] text-white'
+                                : 'border-[#cbd3db] bg-white text-transparent'
                             }`}
                           >
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={() => toggleBus(b.busId)}
-                              className="h-4 w-4 shrink-0 accent-[#2ca84a]"
-                            />
-                            {b.busName}
-                            <span className="text-[11px] text-[#9aa3af]">{b.busTotal}</span>
-                          </label>
-                        )
-                      })}
-                    </SlideRow>
+                            <Check size={13} strokeWidth={3} />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-bold text-[#1b3555]">{b.busName}</span>
+                            <span className="block text-[11px] text-[#8b96a5]">{b.busTotal} peserta</span>
+                          </span>
+                          {checked && (
+                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#163d78] text-white shadow-sm">
+                              <Check size={13} strokeWidth={3} />
+                            </span>
+                          )}
+                        </label>
+                      )
+                    })}
                   </div>
                 </div>
               )}
@@ -363,24 +527,35 @@ export function EventTickets({
                 const hidden = section.busTotal - shown.length
 
                 return (
-                  <div key={section.busId} className="overflow-hidden rounded-2xl border border-[#dfe4e8]">
-                    <div className="flex items-center justify-between bg-[#eef3fb] px-4 py-3">
-                      <p className="flex items-center gap-2 text-sm font-bold text-[#1b4f9c]">
-                        <Bus size={15} /> {section.busName}
+                  <div
+                    key={section.busId}
+                    className="overflow-hidden rounded-2xl border border-[#e8edf3] shadow-[0_10px_30px_-20px_rgba(27,53,85,0.4)]"
+                  >
+                    <div className="flex items-center justify-between gap-3 bg-[linear-gradient(100deg,#071e3d_0%,#0d2850_55%,#163d78_100%)] px-4 py-3">
+                      <p className="flex min-w-0 items-center gap-2.5 text-sm font-bold text-white">
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white/10 text-[#f5b915]">
+                          <Bus size={14} />
+                        </span>
+                        <span className="truncate">{section.busName}</span>
                       </p>
-                      <span className="rounded-full bg-white px-2.5 py-0.5 text-[11px] font-bold text-[#657080]">
+                      <span className="shrink-0 rounded-full border border-[#f5b915]/30 bg-[#f5b915]/12 px-2.5 py-0.5 text-[11px] font-bold tabular-nums text-[#f7dda1]">
                         {section.busAttended}/{section.busTotal} hadir
                       </span>
                     </div>
-                    <div className="divide-y divide-[#edf0f3]">
+                    <div className="divide-y divide-[#f0f3f6]">
                       {shown.map((p) => (
-                        <div key={p.id} className="flex items-center gap-x-4 px-4 py-2.5 text-sm">
-                          <span className="w-8 shrink-0 font-bold text-[#9aa3af]">{p.order}</span>
+                        <div
+                          key={p.id}
+                          className="flex items-center gap-x-4 px-4 py-2.5 text-sm transition-colors duration-150 hover:bg-[#f7fafd]"
+                        >
+                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#eef3fb] text-[11px] font-bold tabular-nums text-[#163d78]">
+                            {p.order}
+                          </span>
                           <button
                             type="button"
                             onClick={() => searchRef.current?.search(p.name, p.token)}
                             title={`Cari ${p.name}`}
-                            className="min-w-0 flex-1 cursor-pointer truncate text-left font-semibold text-[#1b3555] underline-offset-2 transition-colors duration-150 hover:text-[#1b4f9c] hover:underline"
+                            className="min-w-0 flex-1 cursor-pointer truncate text-left font-semibold text-[#1b3555] underline-offset-2 transition-colors duration-150 hover:text-[#163d78] hover:underline"
                           >
                             {p.name}
                           </button>
@@ -388,16 +563,18 @@ export function EventTickets({
                       ))}
 
                       {loading && isExpanded && !cache && (
-                        <p className="bg-[#fbfcfd] px-4 py-2.5 text-xs font-semibold text-[#657080]">Memuat peserta…</p>
+                        <p className="bg-[#fbfcfd] px-4 py-2.5 text-xs font-semibold text-[#657080]">
+                          Memuat peserta…
+                        </p>
                       )}
 
                       {!isExpanded && section.busTotal > limit && (
                         <button
                           type="button"
                           onClick={() => toggleExpand(section.busId)}
-                          className="flex w-full items-start gap-2 bg-[#fbfcfd] px-4 py-2.5 text-left text-xs font-semibold text-[#1b4f9c] transition-colors duration-150 hover:bg-[#f1f6fd]"
+                          className="flex w-full items-start gap-2 bg-[linear-gradient(100deg,#fdf8ec_0%,#fcfbf6_100%)] px-4 py-3 text-left text-xs font-semibold leading-relaxed text-[#8a6a10] transition-colors duration-150 hover:bg-[#fbf1d8]"
                         >
-                          <ChevronDown size={14} className="mt-0.5 shrink-0" />
+                          <ChevronDown size={14} className="mt-0.5 shrink-0 text-[#d9a40c]" />
                           <span>
                             Dan {hidden} peserta lainnya — klik untuk menampilkan semua peserta, atau ketik nama Anda pada
                             kolom &quot;Cari Nama Peserta&quot; di atas untuk melihat tiket &amp; QR.
@@ -409,9 +586,9 @@ export function EventTickets({
                         <button
                           type="button"
                           onClick={() => toggleExpand(section.busId)}
-                          className="flex w-full items-center gap-2 bg-[#fbfcfd] px-4 py-2.5 text-left text-xs font-semibold text-[#1b4f9c] transition-colors duration-150 hover:bg-[#f1f6fd]"
+                          className="flex w-full items-center gap-2 bg-[linear-gradient(100deg,#fdf8ec_0%,#fcfbf6_100%)] px-4 py-3 text-left text-xs font-semibold text-[#8a6a10] transition-colors duration-150 hover:bg-[#fbf1d8]"
                         >
-                          <ChevronUp size={14} className="shrink-0" />
+                          <ChevronUp size={14} className="shrink-0 text-[#d9a40c]" />
                           <span>Sembunyikan peserta lainnya</span>
                         </button>
                       )}
@@ -425,9 +602,13 @@ export function EventTickets({
               })}
             </div>
           ) : (
-            <p className="mt-6 rounded-2xl border border-dashed border-[#dfe4e8] p-6 text-center text-sm text-[#657080]">
-              Belum ada bus/peserta untuk event ini.
-            </p>
+            <div className="mt-6 rounded-2xl border border-dashed border-[#d8e0ea] bg-[linear-gradient(180deg,#fbfcfe_0%,#ffffff_100%)] p-10 text-center">
+              <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#eef3fb] text-[#163d78]">
+                <Bus size={22} />
+              </span>
+              <p className="mt-3 text-sm font-bold text-[#1b3555]">Belum ada bus/peserta</p>
+              <p className="mt-0.5 text-xs text-[#657080]">Belum ada bus/peserta untuk event ini.</p>
+            </div>
           )}
         </div>
       </div>
