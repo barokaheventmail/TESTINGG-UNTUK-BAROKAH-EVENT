@@ -5,6 +5,7 @@ import { requireCrewSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { redirect } from 'next/navigation'
 import { CrewScanner } from '@/components/crew/scanner'
+import { CrewSeatMap } from '@/components/crew/seat-map'
 import { SessionGuard } from '@/components/crew/session-guard'
 import { LogoutButton } from '@/components/admin/logout-button'
 
@@ -61,6 +62,9 @@ export default async function CrewPage() {
       </header>
       <div className="mx-auto mt-5 w-full max-w-md px-4">
         <CrewScanner username={user?.name ?? session.username} />
+        <div className="mt-4">
+          <CrewSeatMap />
+        </div>
       </div>
     </main>
   )

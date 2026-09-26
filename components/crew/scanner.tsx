@@ -87,6 +87,9 @@ export function CrewScanner({ username }: { username: string }) {
       }
       setResult(data as ScanResult)
       clearInput?.()
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('crew:scan-done'))
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Terjadi kesalahan.')
     } finally {
