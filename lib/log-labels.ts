@@ -33,7 +33,16 @@ const ACTION_GROUP: Record<string, LogGroup> = {
   'auth.login.success': 'Keamanan',
   'auth.login.failed': 'Keamanan',
   'auth.logout': 'Keamanan',
+  'log.delete': 'Keamanan',
 }
+
+/**
+ * Aksi yang tetap dicatat ke database tapi tidak ditampilkan di daftar riwayat
+ * dan tidak bisa disaring. dipakai `log.delete`: mengaudit penghapusan riwayat
+ * itu penting, tapi menampilkannya hanya menghasilkan entri baru setiap kali
+ * entri lamanya dihapus — jadi bersembunyi dari pandangan, bukan dihapus.
+ */
+export const HIDDEN_LOG_ACTIONS: string[] = ['log.delete']
 
 export const LOG_ACTIONS: { group: LogGroup; actions: { value: string; label: string }[] }[] = [
   {
@@ -86,6 +95,7 @@ export const LOG_ACTIONS: { group: LogGroup; actions: { value: string; label: st
       { value: 'auth.login.success', label: 'Login berhasil' },
       { value: 'auth.login.failed', label: 'Percobaan login gagal' },
       { value: 'auth.logout', label: 'Logout' },
+      { value: 'log.delete', label: 'Hapus riwayat' },
     ],
   },
 ]
@@ -195,6 +205,10 @@ export function formatLogDetail(action: string, detail: LogDetail): string {
     case 'auth.logout': {
       const n = getValue(detail, 'username')
       return `Logout${n ? ` • ${n}` : ''}`
+    }
+    case 'log.delete': {
+      const n = getValue(detail, 'count')
+      return `Menghapus ${(typeof n === 'number' ? n : 0).toLocaleString('id-ID')} entri riwayat`
     }
     default: {
       if (!detail || Object.keys(detail).length === 0) return '—'

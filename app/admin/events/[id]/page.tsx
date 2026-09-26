@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
-import { ArrowLeft, ArrowUpRight, Bus, CalendarDays, Download, History, MapPin, Printer, ShieldAlert } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Bus, CalendarDays, Download, History, MapPin, Printer, ShieldAlert } from 'lucide-react'
 import { prisma } from '@/lib/db'
 import { formatWaktuLengkap } from '@/lib/dates'
 import { EditEvent } from '@/components/admin/edit-event'
@@ -15,9 +15,10 @@ import { EventImage } from '@/components/admin/event-image'
 import type { GenerateBus } from '@/components/admin/generate-crew'
 import { ResetAttendance } from '@/components/admin/reset-attendance'
 import { LogEntry } from '@/components/admin/log-entry'
+import { HIDDEN_LOG_ACTIONS } from '@/lib/log-labels'
 import { TabBar, isEventTab, type EventTabId } from '@/components/admin/tab-bar'
 
-const MANAGEMENT_ACTIONS: string[] = ['scan.attended', 'scan.duplicate']
+const MANAGEMENT_ACTIONS: string[] = ['scan.attended', 'scan.duplicate', ...HIDDEN_LOG_ACTIONS]
 
 export const metadata: Metadata = { title: 'Detail Event – Panel Admin', robots: { index: false } }
 
@@ -318,15 +319,13 @@ export default async function EventDetail({
               </div>
             </div>
 
+            {/* Gaya link-nya sama dengan "Kembali ke daftar event" di atas dan
+                dengan link kembali di halaman riwayat. */}
             <Link
               href={`/admin/logs?eventId=${event.id}`}
-              className="group flex shrink-0 items-center gap-1.5 rounded-full border border-[#e8d9a8] bg-[linear-gradient(180deg,#fffdf5_0%,#fff7e0_100%)] px-3.5 py-2 text-xs font-bold text-[#8a6a08] shadow-[0_6px_16px_-10px_rgba(138,106,8,0.7)] transition-all duration-200 hover:border-[#d9c07a] hover:shadow-[0_10px_22px_-12px_rgba(138,106,8,0.8)] active:scale-[0.97]"
+              className="inline-flex shrink-0 items-center gap-1 text-xs font-bold text-[#657080] hover:text-[#1b4f9c]"
             >
-              Lihat riwayat lengkap
-              <ArrowUpRight
-                size={13}
-                className="transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
-              />
+              Lihat riwayat lengkap <ArrowRight size={13} />
             </Link>
           </div>
 

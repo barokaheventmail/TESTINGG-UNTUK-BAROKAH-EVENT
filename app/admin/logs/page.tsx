@@ -1,9 +1,9 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
-import { History } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import { prisma } from '@/lib/db'
-import { LOG_ACTIONS } from '@/lib/log-labels'
-import { LogEntry } from '@/components/admin/log-entry'
+import { LOG_ACTIONS, HIDDEN_LOG_ACTIONS } from '@/lib/log-labels'
+import { LogsTable } from '@/components/admin/logs-table'
 
 export const metadata: Metadata = { title: 'Riwayat – Panel Admin', robots: { index: false } }
 export const dynamic = 'force-dynamic'
@@ -26,7 +26,11 @@ export default async function AdminLogsPage({ searchParams }: { searchParams: Se
   const toValid = to && !isNaN(to.getTime()) ? to : null
 
   const where: Record<string, unknown> = {
-    ...(action ? { action } : {}),
+    // Entri tersembunyi tetap ada di database, cuma tidak bisa dilihat/dipilih.
+    // `in` dan `notIn` harus dalam satu objek: kalau `action` ditulis terpisah
+    // lewat spread, filter `notIn` ketimpa dan `?action=log.delete` bisa
+    // membocorkan entri yang sengaja disembunyikan.
+    action: action ? { in: [action], notIn: HIDDEN_LOG_ACTIONS } : { notIn: HIDDEN_LOG_ACTIONS },
     ...(eventId ? { eventId } : {}),
     ...(userId ? { userId } : {}),
     ...(fromValid || toValid ? { createdAt: { ...(fromValid ? { gte: fromValid } : {}), ...(toValid ? { lte: toValid } : {}) } } : {}),
@@ -49,6 +53,15 @@ export default async function AdminLogsPage({ searchParams }: { searchParams: Se
   for (const u of users) data[u.id] = { username: u.username }
   for (const e of events) data[e.id] = { ...data[e.id], title: e.title }
 
+  // Halaman ini biasanya dibuka dari tombol "Lihat riwayat lengkap" di tab
+  // Riwayat sebuah event, jadi kembalinya harus ke sana — bukan ke daftar
+  // event. Kalau tidak difilter per event (atau event-nya sudah dihapus),
+  // jatuh ke daftar event. Gaya link-nya sengaja sama dengan link "Kembali ke
+  // daftar event" di halaman detail event.
+  const backEvent = eventId ? events.find((e) => e.id === eventId) ?? null : null
+  const backHref = backEvent ? `/admin/events/${backEvent.id}?tab=riwayat` : '/admin'
+  const backLabel = backEvent ? 'Kembali ke Riwayat Event' : 'Kembali ke daftar event'
+
   const qs = (patch: Record<string, string>): string => {
     const p = new URLSearchParams()
     for (const [k, v] of Object.entries({
@@ -70,11 +83,24 @@ export default async function AdminLogsPage({ searchParams }: { searchParams: Se
 
   return (
     <div className="mx-auto max-w-4xl">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <Link
+        href={backHref}
+        className="inline-flex items-center gap-1 text-xs font-bold text-[#657080] hover:text-[#1b4f9c]"
+      >
+        <ArrowLeft size={13} /> {backLabel}
+      </Link>
+
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-[#1b3555]">Riwayat Aktivitas</h1>
           <p className="mt-0.5 text-sm text-[#657080]">
-            Catatan semua aksi admin dan scan crew ({total.toLocaleString('id-ID')} entri).
+            {backEvent ? (
+              <>
+                Catatan aksi untuk event <span className="font-bold text-[#1b3555]">{backEvent.title}</span> ({total.toLocaleString('id-ID')} entri).
+              </>
+            ) : (
+              <>Catatan semua aksi admin dan scan crew ({total.toLocaleString('id-ID')} entri).</>
+            )}
           </p>
         </div>
       </div>
@@ -88,15 +114,20 @@ export default async function AdminLogsPage({ searchParams }: { searchParams: Se
             className="rounded-xl border border-[#dfe4e8] bg-white px-3 py-2 text-sm font-semibold text-[#1b3555]"
           >
             <option value="semua">Semua aksi</option>
-            {LOG_ACTIONS.map((g) => (
-              <optgroup key={g.group} label={g.group}>
-                {g.actions.map((a) => (
-                  <option key={a.value} value={a.value}>
-                    {a.label}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
+            {LOG_ACTIONS.map((g) => {
+              // Grup yang seluruhnya tersembunyi tidak perlu tampil sama sekali.
+              const actions = g.actions.filter((a) => !HIDDEN_LOG_ACTIONS.includes(a.value))
+              if (actions.length === 0) return null
+              return (
+                <optgroup key={g.group} label={g.group}>
+                  {actions.map((a) => (
+                    <option key={a.value} value={a.value}>
+                      {a.label}
+                    </option>
+                  ))}
+                </optgroup>
+              )
+            })}
           </select>
         </label>
         <label className="text-xs">
@@ -163,61 +194,19 @@ export default async function AdminLogsPage({ searchParams }: { searchParams: Se
         )}
       </form>
 
-      {logs.length === 0 ? (
-        <div className="mt-6 rounded-2xl border border-dashed border-[#bfd3c4] bg-white p-10 text-center">
-          <History className="mx-auto text-[#9aa3af]" size={36} />
-          <p className="mt-3 text-sm font-bold text-[#1b3555]">Tidak ada riwayat</p>
-          <p className="mt-1 text-xs text-[#657080]">Belum ada aktivitas yang tercatat untuk filter ini.</p>
-        </div>
-      ) : (
-        <div className="mt-6 overflow-hidden rounded-2xl border border-[#dfe4e8] bg-white">
-          <ul className="divide-y divide-[#eef1f4]">
-            {logs.map((log) => {
-              const meta = data[log.eventId ?? '']
-              const uname = data[log.userId ?? '']?.username
-              return (
-                <LogEntry
-                  key={log.id}
-                  log={{
-                    id: log.id,
-                    action: log.action,
-                    detail: log.detail,
-                    createdAt: log.createdAt,
-                    user: uname ? { username: uname } : null,
-                    event: meta?.title ? { title: meta.title } : null,
-                  }}
-                />
-              )
-            })}
-          </ul>
-        </div>
-      )}
-
-      {totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-between text-sm">
-          <p className="font-semibold text-[#657080]">
-            Halaman {page} dari {totalPages}
-          </p>
-          <div className="flex gap-2">
-            {page > 1 && (
-              <Link
-                href={`/admin/logs${qs({ page: String(page - 1) })}`}
-                className="rounded-xl border border-[#dfe4e8] bg-white px-4 py-2 text-sm font-bold text-[#1b3555] hover:bg-[#f1f3f5]"
-              >
-                ‹ Sebelumnya
-              </Link>
-            )}
-            {page < totalPages && (
-              <Link
-                href={`/admin/logs${qs({ page: String(page + 1) })}`}
-                className="rounded-xl border border-[#dfe4e8] bg-white px-4 py-2 text-sm font-bold text-[#1b3555] hover:bg-[#f1f3f5]"
-              >
-                Berikutnya ›
-              </Link>
-            )}
-          </div>
-        </div>
-      )}
+      <LogsTable
+        logs={logs.map((log) => ({
+          id: log.id,
+          action: log.action,
+          detail: log.detail,
+          createdAt: log.createdAt.toISOString(),
+          username: data[log.userId ?? '']?.username ?? null,
+          eventTitle: data[log.eventId ?? '']?.title ?? null,
+        }))}
+        page={page}
+        totalPages={totalPages}
+        baseQuery={qs({})}
+      />
     </div>
   )
 }

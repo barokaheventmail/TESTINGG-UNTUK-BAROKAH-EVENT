@@ -96,12 +96,15 @@ function ArmadaPicker({
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-haspopup="listbox"
-        className="flex w-full items-center gap-3 rounded-2xl bg-[linear-gradient(100deg,#071e3d_0%,#163d78_100%)] px-4 py-3 pr-20 text-left text-white shadow-[0_14px_32px_-14px_rgba(9,32,74,0.95)] transition-shadow duration-300 hover:shadow-[0_18px_38px_-14px_rgba(9,32,74,1)]"
+        className="group flex w-full items-center gap-3 rounded-2xl bg-[linear-gradient(100deg,#071e3d_0%,#163d78_100%)] px-4 py-3 text-left text-white shadow-[0_14px_32px_-14px_rgba(9,32,74,0.95)] transition-shadow duration-300 hover:shadow-[0_18px_38px_-14px_rgba(9,32,74,1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
       >
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15">
           <Bus size={17} />
         </span>
-        <span className="min-w-0 flex-1">
+        {/* `pr-20` hanya dipakai saat ada pilihan, untuk memberi ruang tombol X.
+            Kalau tidak, trigger cukup `px-4` supaya panah tetap menempel di
+            tepi kanan dan tidak melayang jauh dari ujung. */}
+        <span className={`min-w-0 flex-1 ${selectedIds.length > 0 ? 'pr-20' : ''}`}>
           <span className="block truncate text-sm font-bold">
             {selectedIds.length === 0
               ? 'Pilih Armada'
@@ -116,11 +119,11 @@ function ArmadaPicker({
           </span>
         </span>
         <span
-          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/15 transition-transform duration-300 ease-out ${
+          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/15 text-white/90 ring-1 ring-inset ring-white/20 transition-all duration-300 ease-out group-hover:bg-white/25 ${
             open ? 'rotate-180' : ''
           }`}
         >
-          <ChevronDown size={14} />
+          <ChevronDown size={15} />
         </span>
       </button>
 
@@ -132,7 +135,7 @@ function ArmadaPicker({
           onClick={onClear}
           title="Batalkan semua pilihan"
           aria-label="Batalkan semua pilihan"
-          className="absolute right-11 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-white transition-colors duration-200 hover:bg-white/30"
+          className="absolute right-12 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-white ring-1 ring-inset ring-white/20 transition-colors duration-200 hover:bg-[#e05a4d]"
         >
           <X size={13} />
         </button>
