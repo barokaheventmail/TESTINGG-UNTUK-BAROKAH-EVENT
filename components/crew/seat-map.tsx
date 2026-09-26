@@ -168,7 +168,7 @@ export function CrewSeatMap() {
             <div className="mt-4 space-y-2">
               <div className="rounded-xl bg-[#f8fafc] p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-[#9aa3af]">Nama Peserta</p>
-                <p className="mt-0.5 text-base font-bold text-[#1b3555]">{selected.name}</p>
+                <p className="mt-0.5 text-xl font-black text-[#1b3555]">{selected.name}</p>
               </div>
               <div className="rounded-xl bg-[#f8fafc] p-3 text-xs font-semibold text-[#657080]">
                 {selected.busName} · {selected.eventTitle}

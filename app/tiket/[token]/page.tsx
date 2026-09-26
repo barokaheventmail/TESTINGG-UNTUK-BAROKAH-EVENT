@@ -1,12 +1,13 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
-import { BadgeCheck, Bus, Clock3, DoorOpen, MapPin } from 'lucide-react'
+import { BadgeCheck, Bus, Clock3, DoorOpen, MapPin, MessageCircle } from 'lucide-react'
 import { prisma } from '@/lib/db'
 import { qrDataUrl, encodeToken } from '@/lib/scan'
 import { formatTanggalPendek } from '@/lib/dates'
 import { AutoRefresh } from '@/components/admin/auto-refresh'
 import { PrintButton } from '@/components/admin/print-button'
+import { waLink } from '@/lib/wa'
 
 export const metadata: Metadata = { title: 'Tiket Peserta – Barokah Tour and Travel', robots: { index: false } }
 export const dynamic = 'force-dynamic'
@@ -16,7 +17,7 @@ export default async function TicketPage({ params }: { params: Promise<{ token: 
   const p = await prisma.participant.findUnique({
     where: { token },
     include: {
-      bus: { include: { workers: { orderBy: { order: 'asc' }, include: { user: { select: { username: true, name: true } } } } } },
+      bus: { include: { workers: { orderBy: { order: 'asc' }, include: { user: { select: { username: true, name: true, phone: true } } } } } },
       event: true,
       scannedBy: { select: { username: true, name: true } },
     },
@@ -27,6 +28,10 @@ export default async function TicketPage({ params }: { params: Promise<{ token: 
   const qr = await qrDataUrl(encodeToken(p.token), 420)
   const attended = p.scannedAt !== null
   const noTicket = p.ticketCode
+  const kontaks = p.bus.workers
+    .filter((w) => w.user.phone)
+    .map((w) => ({ name: w.user.name ?? w.user.username, href: waLink(w.user.phone) }))
+    .filter((k) => k.href)
 
   return (
     <main className="min-h-screen bg-[#f4f7fa] px-4 py-8">
@@ -109,6 +114,22 @@ export default async function TicketPage({ params }: { params: Promise<{ token: 
                 </div>
               )}
             </dl>
+
+            {kontaks.length > 0 && (
+              <div className="mt-4 space-y-2">
+                {kontaks.map((k) => (
+                  <a
+                    key={k.href}
+                    href={k.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 rounded-full bg-[#25d366] py-3 text-sm font-bold text-white shadow-sm transition-colors duration-200 hover:bg-[#1eb055] active:scale-[0.98]"
+                  >
+                    <MessageCircle size={16} /> Hubungi Panitia {k.name}
+                  </a>
+                ))}
+              </div>
+            )}
 
             <div className="mt-5 flex flex-col items-center gap-3 rounded-xl bg-[#f8fafc] p-5">
               {/* eslint-disable-next-line @next/next/no-img-element */}

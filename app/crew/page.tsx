@@ -1,13 +1,13 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { History } from 'lucide-react'
+import { History, MessageCircle } from 'lucide-react'
 import { requireCrewSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { redirect } from 'next/navigation'
-import { CrewScanner } from '@/components/crew/scanner'
-import { CrewSeatMap } from '@/components/crew/seat-map'
+import { CrewPanels } from '@/components/crew/panels'
 import { SessionGuard } from '@/components/crew/session-guard'
 import { LogoutButton } from '@/components/admin/logout-button'
+import { waLink } from '@/lib/wa'
 
 export const metadata: Metadata = { title: 'Scan QR Peserta – Barokah Tour', robots: { index: false } }
 
@@ -16,7 +16,7 @@ export default async function CrewPage() {
   if (!session) redirect('/login?scope=CREW&next=/crew')
 
   const [user, assigned] = await Promise.all([
-    prisma.user.findUnique({ where: { id: session.sub }, select: { name: true } }),
+    prisma.user.findUnique({ where: { id: session.sub }, select: { name: true, phone: true } }),
     prisma.busWorker.findMany({
       where: { userId: session.sub },
       orderBy: { createdAt: 'asc' },
@@ -45,7 +45,22 @@ export default async function CrewPage() {
             <LogoutButton variant="dark" scope="CREW" />
           </div>
         </div>
-        <p className="mt-1 text-xs text-white/60">Crew: {user?.name ?? session.username}</p>
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <p className="shrink-0 text-[10px] font-bold uppercase tracking-widest text-white/40">Crew</p>
+            <p className="truncate text-sm font-black text-white">{user?.name ?? session.username}</p>
+          </div>
+          {user?.phone && (
+            <a
+              href={waLink(user.phone)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex shrink-0 items-center gap-1.5 rounded-full border border-[#25d366]/40 bg-[#25d366]/15 px-3 py-1.5 text-[11px] font-bold text-[#7ceba7] transition-colors duration-200 hover:bg-[#25d366]/25"
+            >
+              <MessageCircle size={13} /> WA
+            </a>
+          )}
+        </div>
         {activeAssignments.length > 0 && (
           <p className="mx-auto mt-1 max-w-md text-[11px] text-white/60">
             Ditugaskan di{' '}
@@ -61,10 +76,7 @@ export default async function CrewPage() {
         )}
       </header>
       <div className="mx-auto mt-5 w-full max-w-md px-4">
-        <CrewScanner username={user?.name ?? session.username} />
-        <div className="mt-4">
-          <CrewSeatMap />
-        </div>
+        <CrewPanels username={user?.name ?? session.username} />
       </div>
     </main>
   )
