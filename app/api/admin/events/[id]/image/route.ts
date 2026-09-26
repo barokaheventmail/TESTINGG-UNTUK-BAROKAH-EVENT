@@ -1,7 +1,7 @@
 import { mkdir, rm, writeFile } from 'fs/promises'
 import { join, resolve } from 'path'
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUser } from '@/lib/auth'
+import { requireAdminSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
 
@@ -22,8 +22,8 @@ function uploadPath(): string {
 }
 
 export async function POST(request: NextRequest, { params }: Params) {
-  const session = await requireUser()
-  if (!session || session.role !== 'ADMIN') {
+  const session = await requireAdminSession()
+  if (!session) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -79,8 +79,8 @@ export async function POST(request: NextRequest, { params }: Params) {
 }
 
 export async function DELETE(_request: NextRequest, { params }: Params) {
-  const session = await requireUser()
-  if (!session || session.role !== 'ADMIN') {
+  const session = await requireAdminSession()
+  if (!session) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
 import bcrypt from 'bcryptjs'
-import { requireUser } from '@/lib/auth'
+import { requireAdminSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
 
 type Params = { params: Promise<{ id: string; busId: string }> }
 
 export async function POST(request: NextRequest, { params }: Params) {
-  const session = await requireUser()
-  if (!session || session.role !== 'ADMIN') {
+  const session = await requireAdminSession()
+  if (!session) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
