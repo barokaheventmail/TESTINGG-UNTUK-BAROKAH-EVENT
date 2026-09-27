@@ -1,42 +1,40 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { Bus, Check, ChevronDown, Search } from 'lucide-react'
 
-const ALL = 'all'
-const optionId = (id: string) => `qr-bus-option-${id}`
+export type ArmadaOption = {
+  id: string
+  name: string
+  count: number
+  rows: number
+  cols: number
+  activeSeats: number
+}
 
-type BusItem = { id: string; name: string }
+const optionId = (id: string) => `armada-option-${id}`
 
 /**
- * Filter bus untuk halaman cetak QR. Semula native `<select>`, tapi popup-nya
- * digambar OS: kotak kaku dengan border sistem, dan langsung hilang begitu ada
- * yang dipilih — bertolak belakang dengan nuansa halaman yang lembut. Sekarang
- * panelnya elemen kita sendiri, jadi radius, shadow, dan animasi masuk/keluarnya
- * bisa diatur, dan 78 baris bus tidak terasa berdesakan.
+ * Single-select armada untuk editor layout kursi. Popup-nya adalah elemen kita,
+ * bukan `<option>` native, jadi bentuk, radius, shadow, dan animasinya bisa
+ * dibuat lembut — popup `<option>` digambar OS dan selalu datang mendadak.
  *
- * Logikanya sengaja tinggal di file ini: `ArmadaPicker` tidak perlu disentuh
- * hanya karena kebetulan picker yang mirip.
- *
- * Panel tidak pernah di-unmount, hanya disembunyikan, supaya transisi keluar
- * sempat tampil. Handle keyboard: panah/Home/End untuk geser kursor opsi, Enter
- * untuk pilih, Escape menutup, ketik huruf langsung mencari. URL yang
- * dihasilkan sengaja sama seperti sebelumnya: hanya `?bus=`.
+ * Popup sengaja tidak di-unmount saat menutup, hanya disembunyikan: transisi
+ * keluar sempat tampil, dan DOM-nya tetap utuh. Handle keyboard:
+ * panah/Home/End untuk geser kursor opsi, Enter untuk pilih, Escape menutup,
+ * ketik huruf langsung mencari.
  */
-export function QrBusFilter({
-  eventId,
-  buses,
-  initial,
+export function ArmadaPicker({
+  options,
+  value,
+  onChange,
+  label,
 }: {
-  eventId: string
-  buses: { id: string; name: string }[]
-  initial: string[]
+  options: ArmadaOption[]
+  value: string | null
+  onChange: (id: string) => void
+  label?: string
 }) {
-  const router = useRouter()
-  const allIds = useMemo(() => buses.map((b) => b.id), [buses])
-  const [value, setValue] = useState<string>(initial.length === buses.length && buses.length > 0 ? ALL : initial[0] ?? ALL)
-
   const [open, setOpen] = useState(false)
   const [q, setQ] = useState('')
   const [cursor, setCursor] = useState(-1)
@@ -46,7 +44,7 @@ export function QrBusFilter({
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
 
-  const options = useMemo<BusItem[]>(() => [{ id: ALL, name: `Semua (${buses.length})` }, ...buses], [buses])
+  const selected = options.find((o) => o.id === value) ?? null
 
   useEffect(() => {
     if (!open) return
@@ -110,17 +108,14 @@ export function QrBusFilter({
     else if (bottom > list.scrollTop + list.clientHeight) list.scrollTop = bottom - list.clientHeight + 6
   }, [open, cursor])
 
-  function apply(next: string) {
-    setValue(next)
-    if (next === ALL || buses.length === 0) {
-      router.replace(`/admin/events/${eventId}/qr?bus=${allIds.join(',')}`)
-    } else {
-      router.replace(`/admin/events/${eventId}/qr?bus=${next}`)
-    }
-  }
+  const summary = selected
+    ? selected.activeSeats > 0
+      ? `${selected.count} peserta · ${selected.activeSeats} kursi aktif`
+      : `${selected.count} peserta · belum ada layout`
+    : `${options.length} armada tersedia`
 
-  function choose(o: BusItem) {
-    apply(o.id)
+  function choose(o: ArmadaOption) {
+    onChange(o.id)
     setOpen(false)
   }
 
@@ -163,12 +158,8 @@ export function QrBusFilter({
     }
   }
 
-  if (buses.length === 0) return null
-
-  const selectedName = options.find((o) => o.id === value)?.name ?? `Semua (${buses.length})`
-
   return (
-    <div ref={wrapRef} className="print:hidden relative mt-3 w-fit">
+    <div ref={wrapRef} className="relative w-full sm:w-auto sm:min-w-[17rem]">
       <button
         ref={triggerRef}
         type="button"
@@ -176,8 +167,8 @@ export function QrBusFilter({
         onKeyDown={onKeyDown}
         aria-expanded={open}
         aria-haspopup="listbox"
-        aria-label="Pilih bus untuk dicetak"
-        className={`flex items-center gap-2.5 rounded-full border py-2 pl-2 pr-2.5 text-left transition-[background-color,border-color,box-shadow] duration-200 ease-out ${
+        aria-label={label ?? 'Pilih armada'}
+        className={`flex w-full items-center gap-2.5 rounded-full border py-2 pl-2 pr-2.5 text-left transition-[background-color,border-color,box-shadow] duration-200 ease-out ${
           open
             ? 'border-[#1b4f9c]/45 bg-white shadow-[0_10px_24px_-16px_rgba(9,32,74,0.6)]'
             : 'border-[#dfe4e8] bg-[#f8fafc] hover:border-[#cdd7e4] hover:bg-white hover:shadow-[0_8px_20px_-16px_rgba(9,32,74,0.5)]'
@@ -187,10 +178,10 @@ export function QrBusFilter({
           <Bus size={14} className="text-[#1b4f9c]" />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-xs font-bold text-[#1b3555]">{selectedName}</span>
-          <span className="mt-0.5 block truncate text-[11px] font-semibold text-[#9aa3af]">
-            Cetak bus · {buses.length} bus di event ini
+          <span className="block truncate text-xs font-bold text-[#1b3555]">
+            {selected ? selected.name : 'Pilih Armada'}
           </span>
+          <span className="mt-0.5 block truncate text-[11px] font-semibold text-[#9aa3af]">{summary}</span>
         </span>
         <span
           aria-hidden
@@ -208,7 +199,7 @@ export function QrBusFilter({
           membungkus elemen yang sedang fokus, tapi tetap hilang dari tab
           order dan accessibility tree saat tertutup. */}
       <div
-        className={`absolute left-0 top-full z-40 mt-2 w-[min(19rem,calc(100vw-2.5rem))] origin-top rounded-2xl border border-[#ece3cd] bg-white p-2 transition-[opacity,visibility,box-shadow] duration-200 ease-out ${
+        className={`absolute left-0 top-full z-40 mt-2 w-[min(22rem,calc(100vw-2.5rem))] origin-top rounded-2xl border border-[#ece3cd] bg-white p-2 transition-[opacity,visibility,box-shadow] duration-200 ease-out ${
           open
             ? 'visible opacity-100 shadow-[0_28px_70px_-22px_rgba(9,32,74,0.6)] animate-overlay-in'
             : `pointer-events-none invisible opacity-0 shadow-[0_12px_28px_-20px_rgba(9,32,74,0.35)] ${
@@ -230,7 +221,7 @@ export function QrBusFilter({
             onKeyDown={onKeyDown}
             onFocus={() => inputRef.current?.select()}
             placeholder="Cari bus…"
-            aria-label="Cari bus"
+            aria-label="Cari armada"
             className="w-full rounded-xl border border-[#dfe4e8] bg-[#f8fafc] py-2 pl-8 pr-3 text-xs font-semibold text-[#1b3555] outline-none transition-[background-color,border-color,box-shadow] duration-200 placeholder:text-[#9aa3af] focus:border-[#1b4f9c] focus:bg-white focus:ring-2 focus:ring-[#1b4f9c]/15"
           />
         </div>
@@ -238,9 +229,9 @@ export function QrBusFilter({
         <div
           ref={listRef}
           role="listbox"
-          aria-label="Daftar bus"
+          aria-label={label ?? 'Daftar armada'}
           aria-activedescendant={cursor >= 0 && filtered[cursor] ? optionId(filtered[cursor].id) : undefined}
-          className="relative max-h-[min(22rem,60vh)] overflow-y-auto overscroll-contain"
+          className="relative max-h-[min(24rem,60vh)] overflow-y-auto overscroll-contain"
         >
           {filtered.map((o, i) => {
             const on = o.id === value
@@ -268,18 +259,32 @@ export function QrBusFilter({
                   {on && <Check size={10} strokeWidth={3} />}
                 </span>
                 <span className="min-w-0 flex-1 truncate text-xs font-bold text-[#1b3555]">{o.name}</span>
+                <span className="shrink-0 text-[10px] font-bold tabular-nums text-[#657080]">
+                  {o.count} peserta
+                </span>
+                <span className="shrink-0">
+                  {o.activeSeats > 0 ? (
+                    <span className="rounded-full bg-[#eef3fb] px-2 py-0.5 text-[10px] font-bold tabular-nums text-[#1b4f9c]">
+                      {o.rows}×{o.cols}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-semibold text-[#b0b8c2]">belum ada layout</span>
+                  )}
+                </span>
               </button>
             )
           })}
 
           {filtered.length === 0 && (
-            <p className="px-3 py-6 text-center text-xs font-semibold text-[#9aa3af]">Tidak ada bus yang cocok.</p>
+            <p className="px-3 py-6 text-center text-xs font-semibold text-[#9aa3af]">
+              {options.length === 0 ? 'Belum ada armada.' : 'Tidak ada bus yang cocok.'}
+            </p>
           )}
         </div>
 
         {filtered.length > 0 && (
           <p className="mt-1 border-t border-[#f1f3f5] px-2.5 pt-1.5 text-[10px] font-semibold tabular-nums text-[#b0b8c2]">
-            {filtered.length} dari {options.length} bus · ↑↓ geser, Enter pilih
+            {filtered.length} dari {options.length} armada · ↑↓ geser, Enter pilih
           </p>
         )}
       </div>
