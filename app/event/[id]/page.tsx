@@ -5,7 +5,8 @@ import { EventNavbar } from '@/components/event-navbar'
 import { EventTickets } from '@/components/event-tickets'
 
 export const metadata: Metadata = { title: 'Detail Event – Barokah Tour and Travel', robots: { index: false } }
-export const dynamic = 'force-dynamic'
+// Cache 30 detik - data scan tidak perlu real-time untuk publik
+export const revalidate = 30
 
 const LIST_LIMIT = 15
 

@@ -219,6 +219,9 @@ export async function POST(request: NextRequest, { params }: Params) {
           },
         },
       })
+    }, {
+      maxWait: 15000,
+      timeout: 120000,
     })
   } catch (e) {
     logger.error('excel import failed', { eventId: id, file: file.name, error: e instanceof Error ? e.message : 'unknown' })

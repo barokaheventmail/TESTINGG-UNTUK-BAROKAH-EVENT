@@ -18,7 +18,9 @@ export const metadata: Metadata = {
   },
 }
 
-export const dynamic = 'force-dynamic'
+// Halaman di-cache dan di-refresh tiap 60 detik (ISR)
+// Jauh lebih ringan dari force-dynamic yang query DB tiap request
+export const revalidate = 60
 
 const layanan = [
   'Tour Package Domestik dan Mancanegara',
