@@ -157,6 +157,9 @@ export async function POST(request: NextRequest, { params }: Params) {
 
         let created = 0
         let updated = 0
+        const createData = []
+        const updatePromises = []
+
         for (const p of bus.participants) {
           const values = {
             name: p.name,
@@ -183,16 +186,30 @@ export async function POST(request: NextRequest, { params }: Params) {
 
           const existsId = byOrder.get(p.order)
           if (existsId) {
-            await tx.participant.update({ where: { id: existsId }, data })
+            updatePromises.push(tx.participant.update({ where: { id: existsId }, data }))
             updated++
           } else {
             const token = randomUUID()
-            // Field yang undefined otomatis menjadi NULL saat create.
-            await tx.participant.create({
-              data: { ...data, eventId: id, busId: busRec.id, order: p.order, token, ticketCode: ticketCodeFromToken(event.date, token) },
+            createData.push({
+              ...data,
+              eventId: id,
+              busId: busRec.id,
+              order: p.order,
+              token,
+              ticketCode: ticketCodeFromToken(event.date, token),
             })
             created++
           }
+        }
+
+        // Eksekusi create sekaligus (1 query untuk ribuan baris, sangat cepat)
+        if (createData.length > 0) {
+          await tx.participant.createMany({ data: createData })
+        }
+
+        // Eksekusi update secara paralel dalam batch 50
+        for (let j = 0; j < updatePromises.length; j += 50) {
+          await Promise.all(updatePromises.slice(j, j + 50))
         }
 
         totalCreated += created
