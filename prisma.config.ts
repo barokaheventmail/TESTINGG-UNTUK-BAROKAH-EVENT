@@ -1,17 +1,8 @@
-import { existsSync } from 'node:fs'
-import { defineConfig } from 'prisma/config'
-
-for (const file of ['.env', 'prisma/.env']) {
-  if (existsSync(file)) {
-    process.loadEnvFile(file)
-    break
-  }
-}
+import { defineConfig } from "prisma/config";
 
 export default defineConfig({
-  schema: 'prisma/schema.prisma',
+  schema: "prisma/schema.prisma",
   migrations: {
-    path: 'prisma/migrations',
-    seed: 'node prisma/seed.mjs',
+    path: "prisma/migrations",
   },
-})
+});
