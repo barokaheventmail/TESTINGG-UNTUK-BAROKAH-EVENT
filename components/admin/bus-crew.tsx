@@ -2,7 +2,8 @@
 
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Bus, Check, ChevronDown, ImagePlus, KeyRound, Loader2, Pencil, Phone, Plus, Search, Trash2, User as UserIcon, X } from 'lucide-react'
+import { Bus, Check, ChevronDown, Copy, ImagePlus, KeyRound, Loader2, Pencil, Phone, Plus, Search, Trash2, User as UserIcon, X } from 'lucide-react'
+import { crewPassword } from '@/lib/crew-password'
 
 export type BusWorkerData = {
   id: string
@@ -17,15 +18,6 @@ export type BusWithWorkersData = {
   count: number
   attended: number
   workers: BusWorkerData[]
-}
-
-function generatePassword(len = 10): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
-  const arr = new Uint32Array(len)
-  crypto.getRandomValues(arr)
-  let out = ''
-  for (let i = 0; i < len; i++) out += chars[arr[i] % chars.length]
-  return out
 }
 
 function usernameFromName(name: string): string {
@@ -521,7 +513,6 @@ function WorkerRow({
   const [editingPhone, setEditingPhone] = useState(false)
   const [phone, setPhone] = useState(worker.user.phone ?? '')
   const [resetOpen, setResetOpen] = useState(false)
-  const [password, setPassword] = useState('')
   const [renaming, setRenaming] = useState(false)
   const [name, setName] = useState(worker.user.name ?? '')
   const [confirmRemove, setConfirmRemove] = useState(false)
@@ -677,14 +668,13 @@ function WorkerRow({
       const res = await fetch(`/api/admin/events/${eventId}/bus/${busId}/workers/${worker.id}/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({}),
       })
       if (!res.ok) {
         const data = await res.json().catch(() => null)
         throw new Error(data?.error ?? 'Gagal reset password.')
       }
       setResetOpen(false)
-      setPassword('')
       router.refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Gagal reset password.')
@@ -758,11 +748,10 @@ function WorkerRow({
                 onClick={() => {
                   setMenuOpen(false)
                   setResetOpen(true)
-                  setPassword('')
                 }}
                 className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-bold text-[#1b3555] hover:bg-[#f4f7fb]"
               >
-                <KeyRound size={12} className="shrink-0 text-[#1b4f9c]" /> Reset Password
+                <KeyRound size={12} className="shrink-0 text-[#1b4f9c]" /> Terapkan Password
               </button>
               <button
                 type="button"
@@ -949,26 +938,25 @@ function WorkerRow({
 
       {resetOpen && (
         <div className="mt-1 flex flex-wrap items-center gap-2 rounded-xl bg-[#f8fafc] p-2">
-          <input
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password baru (min 6)"
-            className="w-44 rounded-full border border-[#dfe4e8] bg-white px-3 py-1.5 text-xs font-semibold outline-none placeholder:text-[#9aa3af]"
-          />
+          <span className="text-[11px] font-semibold text-[#657080]">
+            Password: <span className="font-mono font-bold text-[#1b3555]">{crewPassword(worker.user.username)}</span>
+          </span>
           <button
             type="button"
-            onClick={() => setPassword(generatePassword())}
+            onClick={() => {
+              void navigator.clipboard?.writeText(crewPassword(worker.user.username))
+            }}
             className="rounded-full border border-[#dfe4e8] bg-white px-2.5 py-1.5 text-[11px] font-bold text-[#657080] hover:bg-[#f1f3f5]"
           >
-            Generate
+            <Copy size={11} /> Salin
           </button>
           <button
             type="button"
             onClick={resetPassword}
-            disabled={busy || password.length < 6}
+            disabled={busy}
             className="rounded-full bg-[#1b4f9c] px-3 py-1.5 text-[11px] font-bold text-white hover:bg-[#143d79] disabled:opacity-60"
           >
-            {busy ? <Loader2 size={11} className="animate-spin" /> : 'Simpan'}
+            {busy ? <Loader2 size={11} className="animate-spin" /> : 'Terapkan'}
           </button>
         </div>
       )}
@@ -989,7 +977,7 @@ function WorkerRow({
 // dengan form yang terbuka tepat di bawah baris yang dipilih.
 function AddCrewForm({ eventId, bus, onClose }: { eventId: string; bus: BusWithWorkersData; onClose: () => void }) {
   const router = useRouter()
-  const [form, setForm] = useState({ name: '', phone: '', username: '', password: '' })
+  const [form, setForm] = useState({ name: '', phone: '', username: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -1005,7 +993,7 @@ function AddCrewForm({ eventId, bus, onClose }: { eventId: string; bus: BusWithW
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Gagal menambah crew.')
-      setForm({ name: '', phone: '', username: '', password: '' })
+      setForm({ name: '', phone: '', username: '' })
       onClose()
       router.refresh()
     } catch (err) {
@@ -1054,20 +1042,20 @@ function AddCrewForm({ eventId, bus, onClose }: { eventId: string; bus: BusWithW
           placeholder="Username login"
           className={inputCls}
         />
-        <div className="flex gap-1.5">
-          <input
-            value={form.password}
-            onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-            required
-            placeholder="Password"
-            className={inputCls}
-          />
+        <div className="flex items-center gap-1.5 rounded-xl border border-[#eef0f3] bg-white px-3 py-2">
+          <p className="min-w-0 flex-1 truncate text-xs font-semibold text-[#9aa3af]">
+            Password otomatis:{' '}
+            <span className="font-mono font-bold text-[#1b4f9c]">
+              {form.username.trim() ? crewPassword(form.username.trim()) : 'username + 1123'}
+            </span>
+          </p>
           <button
             type="button"
-            onClick={() => setForm((f) => ({ ...f, password: generatePassword() }))}
-            className="shrink-0 rounded-xl border border-[#dfe4e8] bg-white px-3 text-[11px] font-bold text-[#657080] hover:bg-[#f1f3f5]"
+            disabled={!form.username.trim()}
+            onClick={() => void navigator.clipboard?.writeText(crewPassword(form.username.trim()))}
+            className="shrink-0 rounded-lg border border-[#dfe4e8] px-2 py-1 text-[11px] font-bold text-[#657080] hover:bg-[#f1f3f5] disabled:opacity-50"
           >
-            Generate
+            <Copy size={11} />
           </button>
         </div>
       </div>
@@ -1075,7 +1063,7 @@ function AddCrewForm({ eventId, bus, onClose }: { eventId: string; bus: BusWithW
       <div className="flex justify-end">
         <button
           type="submit"
-          disabled={loading || !form.name.trim() || !form.username.trim() || form.password.length < 6}
+          disabled={loading || !form.name.trim() || !form.username.trim()}
           className="flex items-center gap-1.5 rounded-full bg-[#1b4f9c] px-4 py-2 text-xs font-bold text-white transition-colors duration-200 hover:bg-[#143d79] active:scale-95 disabled:opacity-60"
         >
           {loading ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />} Simpan Crew

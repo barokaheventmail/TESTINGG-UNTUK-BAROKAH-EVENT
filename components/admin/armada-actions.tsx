@@ -1,28 +1,33 @@
 'use client'
 
 import { useState } from 'react'
-import { KeyRound, Plus, ShieldAlert, Trash2, UserPlus } from 'lucide-react'
+import { FileDown, KeyRound, Plus, ShieldAlert, Trash2, UserPlus } from 'lucide-react'
 import { ActionMenu } from '@/components/admin/action-menu'
 import { AddBus } from '@/components/admin/add-bus'
+import { CrewCredentialsButton, type CredentialBus } from '@/components/admin/crew-credentials-modal'
 import { DeleteCrewButton } from '@/components/admin/delete-crew'
 import { GenerateCrewButton, type GenerateBus } from '@/components/admin/generate-crew'
 import { ResetCrewPasswordsButton } from '@/components/admin/reset-crew-passwords'
 
-type Key = 'generate' | 'reset' | 'delete' | 'addbus'
+type Key = 'generate' | 'reset' | 'delete' | 'addbus' | 'credentials'
 
 export function ArmadaActions({
   eventId,
   eventTitle,
   defaultPrefix,
+  eventDate,
   buses,
+  credentialBuses,
   totalCrew,
   totalAccounts,
   hasBuses,
 }: {
   eventId: string
   eventTitle: string
+  eventDate: string
   defaultPrefix: string | null
   buses: GenerateBus[]
+  credentialBuses: CredentialBus[]
   totalCrew: number
   totalAccounts: number
   hasBuses: boolean
@@ -51,11 +56,11 @@ export function ArmadaActions({
           },
           {
             key: 'reset',
-            label: 'Reset Password Crew',
+            label: 'Terapkan Password Crew',
             hint:
               totalCrew === 0
                 ? 'Belum ada crew di event ini'
-                : `${totalCrew} crew · password baru untuk semua`,
+                : `${totalCrew} crew · password = username + 1123`,
             icon: <KeyRound size={15} />,
             disabled: totalCrew === 0,
             disabledTitle: 'Belum ada crew di event ini.',
@@ -73,6 +78,15 @@ export function ArmadaActions({
             disabled: totalCrew === 0,
             disabledTitle: 'Belum ada crew di event ini.',
             onSelect: onOpen('delete'),
+          },
+          {
+            key: 'credentials',
+            label: 'Kredensial Crew (PDF)',
+            hint: totalCrew === 0 ? 'Belum ada crew di event ini' : `${totalCrew} crew · lihat & unduh PDF`,
+            icon: <FileDown size={15} />,
+            disabled: totalCrew === 0,
+            disabledTitle: 'Belum ada crew di event ini.',
+            onSelect: onOpen('credentials'),
           },
           {
             key: 'addbus',
@@ -117,6 +131,18 @@ export function ArmadaActions({
           totalCrew={totalCrew}
           open
           onOpenChange={onClose('delete')}
+        />
+      )}
+      {active === 'credentials' && (
+        <CrewCredentialsButton
+          mode="modal"
+          eventId={eventId}
+          eventTitle={eventTitle}
+          eventDate={eventDate}
+          buses={credentialBuses}
+          totalCrew={totalCrew}
+          open
+          onOpenChange={onClose('credentials')}
         />
       )}
       {active === 'addbus' && (

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import { requireAdminSession } from '@/lib/auth'
+import { crewPassword } from '@/lib/crew-password'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
 
@@ -15,7 +16,7 @@ export async function POST(request: NextRequest, { params }: Params) {
 
   const { id, busId } = await params
 
-  let body: { name?: unknown; phone?: unknown; username?: unknown; password?: unknown }
+  let body: { name?: unknown; phone?: unknown; username?: unknown }
   try {
     body = await request.json()
   } catch {
@@ -24,17 +25,15 @@ export async function POST(request: NextRequest, { params }: Params) {
 
   const name = typeof body?.name === 'string' ? body.name.trim() : ''
   const username = typeof body?.username === 'string' ? body.username.trim() : ''
-  const password = typeof body?.password === 'string' ? body.password : ''
   const phone = typeof body?.phone === 'string' ? body.phone.trim() || null : null
 
   if (!name) return NextResponse.json({ error: 'Nama crew wajib diisi.' }, { status: 400 })
   if (!username) return NextResponse.json({ error: 'Username wajib diisi.' }, { status: 400 })
-  if (password.length < 6) return NextResponse.json({ error: 'Password minimal 6 karakter.' }, { status: 400 })
 
   const bus = await prisma.bus.findFirst({ where: { id: busId, eventId: id } })
   if (!bus) return NextResponse.json({ error: 'Bus tidak ditemukan.' }, { status: 404 })
 
-  const passwordHash = await bcrypt.hash(password, 10)
+  const passwordHash = await bcrypt.hash(crewPassword(username), 10)
 
   try {
     const worker = await prisma.$transaction(async (tx) => {

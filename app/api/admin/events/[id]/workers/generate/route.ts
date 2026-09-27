@@ -2,21 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { Prisma } from '@prisma/client'
 import { requireAdminSession } from '@/lib/auth'
+import { CREW_PASSWORD_SUFFIX, crewPassword } from '@/lib/crew-password'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
 
 type Params = { params: Promise<{ id: string }> }
 
 const PREFIX_RE = /^[a-z0-9_]{1,20}$/
-
-function randomPassword(len = 10): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
-  let out = ''
-  const arr = new Uint32Array(len)
-  crypto.getRandomValues(arr)
-  for (let i = 0; i < len; i++) out += chars[arr[i] % chars.length]
-  return out
-}
 
 export async function POST(request: NextRequest, { params }: Params) {
   const session = await requireAdminSession()
@@ -74,7 +66,7 @@ export async function POST(request: NextRequest, { params }: Params) {
           for (let attempt = 0; attempt < 50 && !user; attempt++) {
             while (used.has(nextNum)) nextNum += 1
             const username = prefix + nextNum
-            const password = randomPassword()
+            const password = crewPassword(username)
             const passwordHash = await bcrypt.hash(password, 10)
             try {
               user = await tx.user.create({ data: { username, passwordHash, role: 'CREW' } })
@@ -103,7 +95,7 @@ export async function POST(request: NextRequest, { params }: Params) {
       eventId: id,
       userId: session.sub,
       action: 'busCrew.generate',
-      detail: { prefix, perBus, buses: plan.length, created: created.length },
+      detail: { prefix, perBus, buses: plan.length, created: created.length, pattern: `username+${CREW_PASSWORD_SUFFIX}` },
     },
   })
 

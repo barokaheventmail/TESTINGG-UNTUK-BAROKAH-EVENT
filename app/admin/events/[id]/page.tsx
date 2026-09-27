@@ -15,6 +15,7 @@ import { SeatLayoutEditor, type SeatBus } from '@/components/admin/seat-layout-e
 import { PanduanEditor } from '@/components/admin/panduan-editor'
 import { EventImage } from '@/components/admin/event-image'
 import type { GenerateBus } from '@/components/admin/generate-crew'
+import type { CredentialBus } from '@/components/admin/crew-credentials-modal'
 import { ResetAttendance } from '@/components/admin/reset-attendance'
 import { LogEntry } from '@/components/admin/log-entry'
 import { HIDDEN_LOG_ACTIONS } from '@/lib/log-labels'
@@ -92,6 +93,10 @@ export default async function EventDetail({
     id: b.id,
     name: b.name,
     workerCount: b.workers.length,
+  }))
+  const credentialBuses: CredentialBus[] = event.buses.map((b) => ({
+    name: b.name,
+    usernames: b.workers.map((w) => w.user.username).sort((a, c) => a.localeCompare(c)),
   }))
 
   const seatBuses: SeatBus[] = event.buses.map((b) => ({
@@ -292,8 +297,10 @@ export default async function EventDetail({
             <ArmadaActions
               eventId={event.id}
               eventTitle={event.title}
+              eventDate={event.date.toISOString()}
               defaultPrefix={event.crewPrefix}
               buses={generateBuses}
+              credentialBuses={credentialBuses}
               totalCrew={uniqueCrewCount}
               totalAccounts={generateBuses.reduce((sum, b) => sum + b.workerCount, 0)}
               hasBuses={event.buses.length > 0}

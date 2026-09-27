@@ -57,6 +57,27 @@ input[type='number'] { -moz-appearance:textfield; appearance:textfield; }
   .print-guide .print-avoid-break, .print-guide li, .print-guide tr { break-inside:avoid; page-break-inside:avoid; }
   .print-guide .overflow-x-auto { overflow:visible; }
   .print-guide img { max-height:220px; }
+  /* Kredensial crew: modalnya dirender lewat portal ke <body>, jadi akar cetak
+     bukan anak dari overlay `fixed`. Kalau masih jadi anak overlay, containing
+     block-nya setinggi viewport dan baris lewat halaman pertama ikut terpotong
+     (cuma ~28 baris pertama yang keluar). */
+  body:has(.print-credentials-root) > *:not(.print-credentials-root) { display:none !important; }
+  .print-credentials-root {
+    position:static !important; inset:auto !important; display:block !important;
+    padding:0 !important; background:none !important; backdrop-filter:none !important;
+  }
+  .print-credentials, .print-credentials * { visibility:visible; }
+  .print-credentials {
+    position:static; left:auto; top:auto; width:100%;
+    max-width:none; max-height:none !important; margin:0; padding:0;
+    overflow:visible !important; box-shadow:none; border:none; background:#fff;
+    animation:none; transform:none;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .print-credentials .print-credentials-scroll,
+  .print-credentials .overflow-y-auto { max-height:none !important; overflow:visible !important; }
+  .print-credentials table thead { display:table-header-group; }
+  .print-credentials .print-avoid-break, .print-credentials tr { break-inside:avoid; page-break-inside:avoid; }
 }
 /* Keep bordered content cards softly rounded without changing section dividers. */
 .border:not([class*='rounded-']) { border-radius: .8rem; }

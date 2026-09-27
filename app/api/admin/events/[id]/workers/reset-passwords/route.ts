@@ -1,19 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { requireAdminSession } from '@/lib/auth'
+import { crewPassword } from '@/lib/crew-password'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
 
 type Params = { params: Promise<{ id: string }> }
-
-function randomPassword(len = 10): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
-  let out = ''
-  const arr = new Uint32Array(len)
-  crypto.getRandomValues(arr)
-  for (let i = 0; i < len; i++) out += chars[arr[i] % chars.length]
-  return out
-}
 
 export async function POST(_request: NextRequest, { params }: Params) {
   const session = await requireAdminSession()
@@ -47,11 +39,18 @@ export async function POST(_request: NextRequest, { params }: Params) {
 
   const reset: { username: string; name: string | null; buses: string[]; password: string }[] = []
 
+  // bcrypt cost 10 itu ~60ms per akun. Dihitung di luar transaksi supaya
+  // transaksi tidak menahan lock selama belasan detik saat crew banyak.
+  const hashed: { id: string; passwordHash: string; username: string; name: string | null; buses: string[] }[] = []
+  for (const { user, buses } of byUser.values()) {
+    const password = crewPassword(user.username)
+    hashed.push({ id: user.id, passwordHash: await bcrypt.hash(password, 10), username: user.username, name: user.name, buses })
+  }
+
   await prisma.$transaction(async (tx) => {
-    for (const { user, buses } of byUser.values()) {
-      const password = randomPassword()
-      await tx.user.update({ where: { id: user.id }, data: { passwordHash: await bcrypt.hash(password, 10) } })
-      reset.push({ username: user.username, name: user.name, buses, password })
+    for (const row of hashed) {
+      await tx.user.update({ where: { id: row.id }, data: { passwordHash: row.passwordHash } })
+      reset.push({ username: row.username, name: row.name, buses: row.buses, password: crewPassword(row.username) })
     }
     await tx.activityLog.create({
       data: {

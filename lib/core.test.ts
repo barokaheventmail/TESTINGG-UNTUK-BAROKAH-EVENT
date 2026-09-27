@@ -15,6 +15,7 @@ import {
 import { FACILITY_ICONS } from '../components/facility-icon'
 import { encodeToken, decodeToken, ticketCodeFromToken } from '../lib/scan'
 import { formatLogDetail } from '../lib/log-labels'
+import { CREW_PASSWORD_SUFFIX, crewPassword } from '../lib/crew-password'
 
 const HEADERS = ['No', 'Nama Lengkap', 'Tempat Lahir', 'Tanggal Lahir', 'No Telp/Hp', 'No Kursi', 'No Kamar', 'No VW']
 
@@ -224,6 +225,17 @@ describe('fasilitas', () => {
     expect(res.error).toBeUndefined()
     expect(res.items.map((i) => i.icon)).toEqual(['ellipsis', 'bus-front', 'plug-zap'])
     expect(validateFacilities([{ icon: 'smart-tv', name: 'X' }]).error).toBeTruthy()
+  })
+})
+
+describe('crewPassword', () => {
+  it('membentuk password deterministik username + 1123', () => {
+    expect(crewPassword('armada1')).toBe('armada11123')
+    expect(crewPassword('armada2')).toBe('armada21123')
+    expect(crewPassword('dufan')).toBe('dufan1123')
+  })
+  it('menggunakan suffix tetap 1123', () => {
+    expect(CREW_PASSWORD_SUFFIX).toBe('1123')
   })
 })
 

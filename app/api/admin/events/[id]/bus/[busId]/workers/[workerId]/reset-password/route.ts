@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { requireAdminSession } from '@/lib/auth'
+import { crewPassword } from '@/lib/crew-password'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
 
 type Params = { params: Promise<{ id: string; busId: string; workerId: string }> }
 
-export async function POST(request: NextRequest, { params }: Params) {
+export async function POST(_request: NextRequest, { params }: Params) {
   const session = await requireAdminSession()
   if (!session) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -14,19 +15,12 @@ export async function POST(request: NextRequest, { params }: Params) {
 
   const { id, busId, workerId } = await params
 
-  let body: { password?: unknown }
-  try {
-    body = await request.json()
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
-  }
-  const password = typeof body?.password === 'string' ? body.password : ''
-  if (password.length < 6) return NextResponse.json({ error: 'Password minimal 6 karakter.' }, { status: 400 })
-
+  // Password crew tidak pernah diketik manual lagi: pola username+1123,
+  // jadi server cukup menurunkan ulang dari username yang sudah ada.
   const worker = await prisma.busWorker.findFirst({ where: { id: workerId, busId }, include: { bus: { select: { name: true } }, user: { select: { username: true } } } })
   if (!worker) return NextResponse.json({ error: 'Crew tidak ditemukan.' }, { status: 404 })
 
-  const passwordHash = await bcrypt.hash(password, 10)
+  const passwordHash = await bcrypt.hash(crewPassword(worker.user.username), 10)
   await prisma.$transaction(async (tx) => {
     await tx.user.update({ where: { id: worker.userId }, data: { passwordHash } })
     await tx.activityLog.create({
