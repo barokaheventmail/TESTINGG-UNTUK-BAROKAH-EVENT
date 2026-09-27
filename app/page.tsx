@@ -4,7 +4,7 @@ import { BannerSlideshow } from '@/components/banner-slideshow'
 import { Footer, Navbar, TrustStrip } from '@/components/site'
 import { TicketSearch } from '@/components/ticket-search'
 import { EventCard } from '@/components/event-card'
-import { prisma } from '@/lib/db'
+import { prisma, safeQuery } from '@/lib/db'
 import { formatTanggalPendek } from '@/lib/dates'
 
 export const metadata: Metadata = {
@@ -33,11 +33,18 @@ const layanan = [
 ]
 
 export default async function Home() {
-  const events = await prisma.event.findMany({
-    where: { status: 'ACTIVE' },
-    orderBy: { date: 'desc' },
-    include: { _count: { select: { buses: true, participants: true } } },
-  })
+  // Query dibungkus safeQuery: halaman ini di-prerender saat build, jadi DB
+  // tidak bisa diakses (atau URL-nya rusak) tidak boleh menghentikan build
+  const events = await safeQuery(
+    'daftar event aktif',
+    () =>
+      prisma.event.findMany({
+        where: { status: 'ACTIVE' },
+        orderBy: { date: 'desc' },
+        include: { _count: { select: { buses: true, participants: true } } },
+      }),
+    []
+  )
 
   return (
     <main>
