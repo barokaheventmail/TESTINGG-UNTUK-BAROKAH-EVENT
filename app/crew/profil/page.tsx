@@ -10,13 +10,13 @@ import { parseItinerary, groupItineraryByDay, type ItineraryRow } from '@/lib/it
 import { SessionGuard } from '@/components/crew/session-guard'
 import { LogoutButton } from '@/components/admin/logout-button'
 import { CrewProfileEditor } from '@/components/crew/profile-editor'
-import { CrewRiwayatList } from '@/components/crew/riwayat-list'
+import { CrewRiwayatList, type RiwayatLog, type RiwayatScope } from '@/components/crew/riwayat-list'
 
 export const metadata: Metadata = { title: 'Profil & Riwayat – Barokah Tour', robots: { index: false } }
 export const dynamic = 'force-dynamic'
 
 const PER_PAGE = 50
-type SearchParams = Promise<{ tab?: string; page?: string; q?: string }>
+type SearchParams = Promise<{ tab?: string; page?: string; q?: string; scope?: string }>
 
 export default async function CrewProfilPage({ searchParams }: { searchParams: SearchParams }) {
   const session = await requireCrewSession()
@@ -24,6 +24,7 @@ export default async function CrewProfilPage({ searchParams }: { searchParams: S
 
   const sp = await searchParams
   const tab = sp.tab === 'riwayat' ? 'riwayat' : sp.tab === 'itinerary' ? 'itinerary' : 'profile'
+  const scope: RiwayatScope = sp.scope === 'saya' ? 'saya' : 'armada'
   const page = Math.max(1, Number(sp.page) || 1)
   const q = typeof sp.q === 'string' ? sp.q.trim().slice(0, 100) : ''
   const userId = session.sub
@@ -37,40 +38,100 @@ export default async function CrewProfilPage({ searchParams }: { searchParams: S
   const startOfToday = new Date()
   startOfToday.setHours(0, 0, 0, 0)
 
-  const logWhere: Prisma.ScanLogWhereInput = q
-    ? { userId, participant: { name: { contains: q, mode: 'insensitive' } } }
-    : { userId }
-
-  let logs: import('@/components/crew/riwayat-list').RiwayatLog[] = []
+  let logs: RiwayatLog[] = []
   let total = 0
   let todayCount = 0
 
   if (tab === 'riwayat') {
-    const [l, t, tc] = await Promise.all([
-      prisma.scanLog.findMany({
-        where: logWhere,
-        orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * PER_PAGE,
-        take: PER_PAGE,
-        include: {
+    if (scope === 'armada') {
+      // Kehadiran di armada crew, siapa pun yang mencatatnya (admin, crew lain,
+      // atau device lain). Ini yang dipakai tab scan supaya sinkron dengan panel admin.
+      const assignments = await prisma.busWorker.findMany({
+        where: { userId, bus: { event: { status: 'ACTIVE' } } },
+        select: { busId: true },
+      })
+      const busIds = assignments.map((a) => a.busId)
+      const where: Prisma.ParticipantWhereInput = {
+        busId: { in: busIds },
+        scannedAt: { not: null },
+        ...(q ? { name: { contains: q, mode: 'insensitive' as const } } : {}),
+      }
+      const [rows, t, tc] = await Promise.all([
+        prisma.participant.findMany({
+          where,
+          orderBy: { scannedAt: 'desc' },
+          skip: (page - 1) * PER_PAGE,
+          take: PER_PAGE,
+          select: {
+            id: true,
+            scannedAt: true,
+            name: true,
+            order: true,
+            seat: true,
+            room: true,
+            scannedBy: { select: { id: true, username: true, name: true } },
+            bus: { select: { name: true } },
+            event: { select: { title: true } },
+          },
+        }),
+        prisma.participant.count({ where }),
+        prisma.participant.count({ where: { ...where, scannedAt: { not: null, gte: startOfToday } } }),
+      ])
+      logs = rows
+        .filter((r): r is typeof r & { scannedAt: Date } => r.scannedAt !== null)
+        .map((r) => ({
+          id: r.id,
+          status: 'attended',
+          createdAt: r.scannedAt,
+          scannedBy: r.scannedBy
+            ? { name: r.scannedBy.name, username: r.scannedBy.username, isMe: r.scannedBy.id === userId }
+            : null,
           participant: {
-            select: {
-              name: true,
-              order: true,
-              seat: true,
-              room: true,
-              bus: { select: { name: true } },
-              event: { select: { title: true } },
+            name: r.name,
+            order: r.order,
+            seat: r.seat,
+            room: r.room,
+            bus: r.bus,
+            event: r.event,
+          },
+        }))
+      total = t
+      todayCount = tc
+    } else {
+      // Riwayat pribadi: hanya scan yang dilakukan crew ini.
+      const logWhere: Prisma.ScanLogWhereInput = q
+        ? { userId, participant: { name: { contains: q, mode: 'insensitive' } } }
+        : { userId }
+      const [l, t, tc] = await Promise.all([
+        prisma.scanLog.findMany({
+          where: logWhere,
+          orderBy: { createdAt: 'desc' },
+          skip: (page - 1) * PER_PAGE,
+          take: PER_PAGE,
+          include: {
+            participant: {
+              select: {
+                name: true,
+                order: true,
+                seat: true,
+                room: true,
+                bus: { select: { name: true } },
+                event: { select: { title: true } },
+              },
             },
           },
-        },
-      }),
-      prisma.scanLog.count({ where: logWhere }),
-      prisma.scanLog.count({ where: { userId, createdAt: { gte: startOfToday } } }),
-    ])
-    logs = l as import('@/components/crew/riwayat-list').RiwayatLog[]
-    total = t
-    todayCount = tc
+        }),
+        prisma.scanLog.count({ where: logWhere }),
+        prisma.scanLog.count({ where: { userId, createdAt: { gte: startOfToday } } }),
+      ])
+      // Di scope "saya" semua baris memang milik crew ini.
+      logs = l.map((row) => ({
+        ...row,
+        scannedBy: { name: user.name, username: user.username, isMe: true },
+      }))
+      total = t
+      todayCount = tc
+    }
   }
 
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE))
@@ -239,6 +300,7 @@ export default async function CrewProfilPage({ searchParams }: { searchParams: S
             <CrewRiwayatList
               basePath="/crew/profil"
               tab="riwayat"
+              scope={scope}
               q={q}
               page={page}
               total={total}

@@ -7,7 +7,7 @@ type Seat = {
   seat: string | null
   order: number
   name: string
-  filled: boolean
+  present: boolean
 }
 
 type BusSeats = {
@@ -69,7 +69,7 @@ export function CrewRoster() {
   const visible = useMemo(() => {
     const byName = (bus: BusSeats) => (needle ? bus.seats.filter((s) => s.name.toLowerCase().includes(needle)) : bus.seats)
     return buses
-      .map((bus) => ({ ...bus, seats: byName(bus).filter((s) => (mode === 'belum' ? !s.filled : true)) }))
+      .map((bus) => ({ ...bus, seats: byName(bus).filter((s) => (mode === 'belum' ? !s.present : true)) }))
       .filter((bus) => bus.seats.length > 0)
   }, [buses, q, mode])
 
@@ -160,14 +160,14 @@ export function CrewRoster() {
                   >
                     <span
                       className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold tabular-nums ${
-                        s.filled ? 'bg-emerald-100 text-emerald-600' : 'bg-[#eef3fb] text-[#163d78]'
+                        s.present ? 'bg-emerald-100 text-emerald-600' : 'bg-[#eef3fb] text-[#163d78]'
                       }`}
                     >
                       {s.order}
                     </span>
                     <p className="min-w-0 flex-1 truncate text-[13px] font-bold text-[#1b3555]">{s.name}</p>
                     {s.seat && <span className="shrink-0 text-[10px] font-semibold text-[#9aa3af]">Kursi {s.seat}</span>}
-                    {s.filled ? (
+                    {s.present ? (
                       <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-600">
                         <BadgeCheck size={11} /> Hadir
                       </span>

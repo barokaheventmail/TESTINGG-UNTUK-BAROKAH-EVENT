@@ -1,11 +1,15 @@
 import Link from 'next/link'
-import { History, ScanBarcode, Search } from 'lucide-react'
+import { History, ScanBarcode, Search, Users } from 'lucide-react'
 import { formatWaktuLengkap } from '@/lib/dates'
+
+export type RiwayatScope = 'armada' | 'saya'
 
 export type RiwayatLog = {
   id: string
   status: string
   createdAt: Date
+  /** Siapa yang mencatat kehadiran (bisa admin atau crew lain). */
+  scannedBy: { name: string | null; username: string; isMe: boolean } | null
   participant: {
     name: string
     order: number
@@ -19,6 +23,7 @@ export type RiwayatLog = {
 type Props = {
   basePath: string
   tab?: string
+  scope: RiwayatScope
   q: string
   page: number
   total: number
@@ -27,10 +32,11 @@ type Props = {
   logs: RiwayatLog[]
 }
 
-export function CrewRiwayatList({ basePath, tab, q, page, total, todayCount, totalPages, logs }: Props) {
+export function CrewRiwayatList({ basePath, tab, scope, q, page, total, todayCount, totalPages, logs }: Props) {
   const qs = (patch: Record<string, string>): string => {
     const p = new URLSearchParams()
     if (tab) p.set('tab', tab)
+    if (scope) p.set('scope', scope)
     if (q) p.set('q', q)
     p.set('page', String(page))
     for (const [k, v] of Object.entries(patch)) {
@@ -39,10 +45,16 @@ export function CrewRiwayatList({ basePath, tab, q, page, total, todayCount, tot
     return `${basePath}?${p.toString()}`
   }
 
+  const scopeClass = (active: boolean) =>
+    `flex-1 rounded-full px-3 py-1.5 text-xs font-bold transition-colors duration-150 ${
+      active ? 'bg-[#f5b915] text-[#1d2733]' : 'text-white/70 hover:bg-white/10 hover:text-white'
+    }`
+
   return (
     <>
       <form className="flex items-center gap-2" method="get" action={basePath}>
         {tab && <input type="hidden" name="tab" value={tab} />}
+        {scope && <input type="hidden" name="scope" value={scope} />}
         <label className="flex flex-1 items-center gap-2 rounded-xl border border-white/10 bg-white px-3 py-2.5">
           <Search size={15} className="shrink-0 text-[#9aa3af]" />
           <input
@@ -68,23 +80,50 @@ export function CrewRiwayatList({ basePath, tab, q, page, total, todayCount, tot
         )}
       </form>
 
+      <div className="mt-3 grid grid-cols-2 gap-1.5 rounded-2xl border border-white/10 bg-white/5 p-1.5">
+        <Link href={qs({ scope: 'armada', page: '1' })} className={scopeClass(scope === 'armada')}>
+          <span className="flex items-center justify-center gap-1">
+            <Users size={13} /> Hadir di armadaku
+          </span>
+        </Link>
+        <Link href={qs({ scope: 'saya', page: '1' })} className={scopeClass(scope === 'saya')}>
+          <span className="flex items-center justify-center gap-1">
+            <ScanBarcode size={13} /> Scan saya
+          </span>
+        </Link>
+      </div>
+
       <div className="mt-4 grid grid-cols-2 gap-3">
         <div className="rounded-2xl bg-white/10 p-4">
           <p className="text-2xl font-black text-white">{total.toLocaleString('id-ID')}</p>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-white/50">Total scan</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-white/50">
+            {scope === 'armada' ? 'Hadir di armadaku' : 'Total scan'}
+          </p>
         </div>
         <div className="rounded-2xl bg-white/10 p-4">
           <p className="text-2xl font-black text-[#8fe3a5]">{todayCount.toLocaleString('id-ID')}</p>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-white/50">Scan hari ini</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-white/50">
+            {scope === 'armada' ? 'Hadir hari ini' : 'Scan hari ini'}
+          </p>
         </div>
       </div>
 
       {logs.length === 0 ? (
         <div className="mt-5 rounded-2xl border border-dashed border-white/20 bg-white/5 p-8 text-center">
           <ScanBarcode className="mx-auto text-white/30" size={32} />
-          <p className="mt-3 text-sm font-bold text-white">{q ? 'Tidak ada scan yang cocok' : 'Belum ada scan'}</p>
+          <p className="mt-3 text-sm font-bold text-white">
+            {q
+              ? 'Tidak ada yang cocok'
+              : scope === 'armada'
+                ? 'Belum ada peserta hadir'
+                : 'Belum ada scan'}
+          </p>
           <p className="mt-1 text-xs text-white/50">
-            {q ? `Tidak ditemukan peserta bernama "${q}".` : 'Scan pertama yang kamu lakukan akan tercatat di sini.'}
+            {q
+              ? `Tidak ditemukan peserta bernama "${q}".`
+              : scope === 'armada'
+                ? 'Kehadiran yang dicatat admin atau crew lain otomatis muncul di sini.'
+                : 'Scan pertama yang kamu lakukan akan tercatat di sini.'}
           </p>
         </div>
       ) : (
@@ -92,6 +131,7 @@ export function CrewRiwayatList({ basePath, tab, q, page, total, todayCount, tot
           {logs.map((log) => {
             const attended = log.status === 'attended'
             const p = log.participant
+            const by = log.scannedBy
             return (
               <li key={log.id} className="flex items-start gap-3 rounded-2xl bg-white p-4 shadow-2xl">
                 <span
@@ -109,6 +149,17 @@ export function CrewRiwayatList({ basePath, tab, q, page, total, todayCount, tot
                     {p.room ? ` · ${p.room}` : ''}
                   </p>
                   <p className="mt-0.5 truncate text-[11px] text-[#9aa3af]">{p.event.title}</p>
+                  {by && (
+                    <p className="mt-1 text-[11px] font-semibold text-[#657080]">
+                      Dicatat oleh{' '}
+                      {by.isMe ? (
+                        <span className="text-[#1b4f9c]">kamu</span>
+                      ) : (
+                        <span className="text-[#1b4f9c]">{by.name || by.username}</span>
+                      )}
+                      {by.name && by.isMe ? ` (${by.name})` : ''}
+                    </p>
+                  )}
                 </div>
                 <p className="shrink-0 text-right text-[11px] font-semibold text-[#657080]">
                   {formatWaktuLengkap(new Date(log.createdAt))}
@@ -146,7 +197,10 @@ export function CrewRiwayatList({ basePath, tab, q, page, total, todayCount, tot
       )}
 
       <p className="mt-6 flex items-center justify-center gap-1.5 text-[11px] text-white/50">
-        <History size={12} /> Riwayat semua scan yang kamu lakukan.
+        <History size={12} />
+        {scope === 'armada'
+          ? 'Kehadiran peserta di armada kamu, termasuk yang dicatat admin atau crew lain.'
+          : 'Riwayat semua scan yang kamu lakukan.'}
       </p>
     </>
   )
