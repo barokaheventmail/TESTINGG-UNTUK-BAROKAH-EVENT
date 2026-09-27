@@ -57,7 +57,7 @@ export default async function CrewProfilPage({ searchParams }: { searchParams: S
       const where: Prisma.ParticipantWhereInput = {
         busId: { in: busIds },
         scannedAt: { not: null },
-        ...(q ? { name: { contains: q, mode: 'insensitive' as const } } : {}),
+        ...(q ? { name: { contains: q } } : {}),
       }
       const [rows, t, tc] = await Promise.all([
         prisma.participant.findMany({
@@ -103,7 +103,7 @@ export default async function CrewProfilPage({ searchParams }: { searchParams: S
     } else {
       // Riwayat pribadi: hanya scan yang dilakukan crew ini.
       const logWhere: Prisma.ScanLogWhereInput = q
-        ? { userId, participant: { name: { contains: q, mode: 'insensitive' } } }
+        ? { userId, participant: { name: { contains: q } } }
         : { userId }
       const [l, t, tc] = await Promise.all([
         prisma.scanLog.findMany({

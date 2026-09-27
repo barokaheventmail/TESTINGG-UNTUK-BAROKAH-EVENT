@@ -50,12 +50,12 @@ export async function GET(request: NextRequest, { params }: Params) {
   else if (status === 'pending') where.scannedAt = null
   if (q) {
     where.OR = [
-      { name: { contains: q, mode: 'insensitive' } },
-      { phone: { contains: q, mode: 'insensitive' } },
-      { room: { contains: q, mode: 'insensitive' } },
-      { vw: { contains: q, mode: 'insensitive' } },
-      { seat: { contains: q, mode: 'insensitive' } },
-      { birthPlace: { contains: q, mode: 'insensitive' } },
+      { name: { contains: q } },
+      { phone: { contains: q } },
+      { room: { contains: q } },
+      { vw: { contains: q } },
+      { seat: { contains: q } },
+      { birthPlace: { contains: q } },
     ]
   }
 

@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
 
   const matches = await prisma.participant.findMany({
     where: {
-      name: { contains: q, mode: 'insensitive' },
+      name: { contains: q },
       event: { status: 'ACTIVE' },
       ...(eventId ? { eventId } : {}),
       ...(busIds.length ? { busId: { in: busIds } } : {}),

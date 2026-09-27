@@ -21,7 +21,7 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
 
   const [events, attendedRows] = await Promise.all([
     prisma.event.findMany({
-      where: q ? { title: { contains: q, mode: 'insensitive' } } : {},
+      where: q ? { title: { contains: q } } : {},
       orderBy: { date: 'desc' },
       include: { _count: { select: { buses: true, participants: true } } },
     }),
