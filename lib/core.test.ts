@@ -14,6 +14,7 @@ import {
 } from '../lib/facilities'
 import { FACILITY_ICONS } from '../components/facility-icon'
 import { encodeToken, decodeToken, ticketCodeFromToken } from '../lib/scan'
+import { formatLogDetail } from '../lib/log-labels'
 
 const HEADERS = ['No', 'Nama Lengkap', 'Tempat Lahir', 'Tanggal Lahir', 'No Telp/Hp', 'No Kursi', 'No Kamar', 'No VW']
 
@@ -223,5 +224,19 @@ describe('fasilitas', () => {
     expect(res.error).toBeUndefined()
     expect(res.items.map((i) => i.icon)).toEqual(['ellipsis', 'bus-front', 'plug-zap'])
     expect(validateFacilities([{ icon: 'smart-tv', name: 'X' }]).error).toBeTruthy()
+  })
+})
+
+describe('label log hapus massal', () => {
+  it('hapus kursi & fasilitas per armada tetap menyebut nama bus', () => {
+    expect(formatLogDetail('bus.seatLayoutClear', { name: 'Bus 1' })).toBe('Layout kursi Bus 1 dihapus')
+    expect(formatLogDetail('bus.facilitiesClear', { name: 'Bus 1' })).toBe('Fasilitas Bus 1 dihapus')
+  })
+  it('scope all menampilkan jumlah armada, bukan ???', () => {
+    expect(formatLogDetail('bus.seatLayoutClear', { scope: 'all', buses: 45 })).toBe(
+      'Layout kursi dihapus di 45 armada',
+    )
+    expect(formatLogDetail('bus.facilitiesClear', { scope: 'all', buses: 2 })).toBe('Fasilitas dihapus di 2 armada')
+    expect(formatLogDetail('bus.seatLayoutClear', { scope: 'all' })).toBe('Layout kursi dihapus di ??? armada')
   })
 })

@@ -27,6 +27,32 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   if (!existing) return NextResponse.json({ error: 'Bus tidak ditemukan.' }, { status: 404 })
 
   if (body.clearSeatLayout === true) {
+    const allScope = body.applyToAll === true
+    if (allScope) {
+      const affected = await prisma.bus.count({
+        where: {
+          eventId: id,
+          OR: [{ seatRows: { gt: 0 } }, { seatCols: { gt: 0 } }, { seatLayout: { not: null } }],
+        },
+      })
+      if (affected === 0) return NextResponse.json({ buses: 0 })
+      try {
+        const cleared = await prisma.$transaction(async (tx) => {
+          const result = await tx.bus.updateMany({
+            where: { eventId: id },
+            data: { seatRows: 0, seatCols: 0, seatLayout: null },
+          })
+          await tx.activityLog.create({
+            data: { eventId: id, userId: session.sub, action: 'bus.seatLayoutClear', detail: { scope: 'all', buses: result.count } },
+          })
+          return result.count
+        })
+        logger.info('bus seat layouts cleared for all buses', { eventId: id, by: session.username, buses: cleared })
+        return NextResponse.json({ buses: cleared })
+      } catch (err) {
+        return NextResponse.json({ error: 'Gagal menghapus layout kursi semua armada.' }, { status: 500 })
+      }
+    }
     if (!existing.seatRows && !existing.seatCols && !existing.seatLayout) {
       return NextResponse.json({ bus: existing })
     }
@@ -49,6 +75,24 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   }
 
   if (body.clearFacilities === true) {
+    const allScope = body.applyToAll === true
+    if (allScope) {
+      const affected = await prisma.bus.count({ where: { eventId: id, facilities: { not: null } } })
+      if (affected === 0) return NextResponse.json({ buses: 0 })
+      try {
+        const cleared = await prisma.$transaction(async (tx) => {
+          const result = await tx.bus.updateMany({ where: { eventId: id }, data: { facilities: null } })
+          await tx.activityLog.create({
+            data: { eventId: id, userId: session.sub, action: 'bus.facilitiesClear', detail: { scope: 'all', buses: result.count } },
+          })
+          return result.count
+        })
+        logger.info('bus facilities cleared for all buses', { eventId: id, by: session.username, buses: cleared })
+        return NextResponse.json({ buses: cleared })
+      } catch (err) {
+        return NextResponse.json({ error: 'Gagal menghapus fasilitas semua armada.' }, { status: 500 })
+      }
+    }
     if (!existing.facilities) {
       return NextResponse.json({ bus: existing })
     }

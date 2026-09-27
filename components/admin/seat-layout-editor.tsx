@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { Armchair, Check, ChevronDown, Loader2, Minus, Plus, Trash2, Users } from 'lucide-react'
 import { BusFacilitiesEditor } from '@/components/admin/bus-facilities-editor'
+import { ConfirmBulkDialog } from '@/components/admin/confirm-bulk-dialog'
 import { parseSeatLayout, seatCount, seatNumberMatrix, type SeatLayout } from '@/lib/seat'
 
 export type SeatBus = {
@@ -73,16 +74,22 @@ export function SeatLayoutEditor({ eventId, buses }: { eventId: string; buses: S
   )
   const [loading, setLoading] = useState(false)
   const [confirmClear, setConfirmClear] = useState(false)
+  const [bulkClearOpen, setBulkClearOpen] = useState(false)
+  const [bulkError, setBulkError] = useState<string | null>(null)
   const [status, setStatus] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null)
 
   const numbers = seatNumberMatrix(layout.rows, layout.cols, layout.cells)
   const active = seatCount(layout.cells)
+  const busesWithLayout = buses.filter((b) => b.seatRows > 0 || b.seatCols > 0 || b.seatLayout).length
+  const busesWithFacilities = buses.filter((b) => b.facilities).length
 
   function selectBus(bus: SeatBus) {
     setSelectedId(bus.id)
     setLayout(parseSeatLayout(bus))
     setStatus(null)
     setConfirmClear(false)
+    setBulkClearOpen(false)
+    setBulkError(null)
   }
 
   function setDims(rows: number, cols: number) {
@@ -153,6 +160,32 @@ export function SeatLayoutEditor({ eventId, buses }: { eventId: string; buses: S
     } catch (err) {
       setConfirmClear(false)
       setStatus({ kind: 'err', msg: err instanceof Error ? err.message : 'Gagal menghapus layout kursi.' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function clearAllSeatLayouts() {
+    if (!selectedId) return
+    setLoading(true)
+    setBulkError(null)
+    try {
+      const res = await fetch(`/api/admin/events/${eventId}/bus/${selectedId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clearSeatLayout: true, applyToAll: true }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Gagal menghapus layout kursi semua armada.')
+      setLayout({ rows: 0, cols: 0, cells: [] })
+      setBulkClearOpen(false)
+      setStatus({
+        kind: 'ok',
+        msg: `Layout kursi dihapus di ${(data.buses ?? 0).toLocaleString('id-ID')} armada.`,
+      })
+      router.refresh()
+    } catch (err) {
+      setBulkError(err instanceof Error ? err.message : 'Gagal menghapus layout kursi semua armada.')
     } finally {
       setLoading(false)
     }
@@ -290,6 +323,19 @@ export function SeatLayoutEditor({ eventId, buses }: { eventId: string; buses: S
                       {loading ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
                       {confirmClear ? 'Yakin, hapus?' : 'Hapus Semua Kursi'}
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBulkError(null)
+                        setBulkClearOpen(true)
+                      }}
+                      disabled={loading || busesWithLayout === 0}
+                      title="Menghapus layout kursi di seluruh armada event ini sekaligus"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-[#dfe4e8] px-4 py-2.5 text-xs font-bold text-[#c0392b] transition-colors hover:bg-[#fdf1f0] active:scale-95 disabled:opacity-60"
+                    >
+                      <Trash2 size={13} />
+                      Hapus di Semua Armada
+                    </button>
                   </div>
                 </div>
 
@@ -310,8 +356,25 @@ export function SeatLayoutEditor({ eventId, buses }: { eventId: string; buses: S
               busId={selected.id}
               busName={selected.name}
               initialFacilities={selected.facilities}
+              totalBuses={buses.length}
+              busesWithFacilities={busesWithFacilities}
             />
           )}
+
+          <ConfirmBulkDialog
+            open={bulkClearOpen}
+            title="Hapus layout kursi semua armada?"
+            impact={`${busesWithLayout.toLocaleString('id-ID')} dari ${buses.length.toLocaleString('id-ID')} armada akan kehilangan layout kursinya.`}
+            note="Nomor kursi peserta tidak ikut terhapus, jadi saat layout dibuat ulang penomoran kembali otomatis. Peta kursi peserta & crew langsung kosong sampai itu terjadi."
+            error={bulkError}
+            confirmLabel="Ya, hapus semua"
+            loading={loading}
+            onConfirm={clearAllSeatLayouts}
+            onClose={() => {
+              setBulkClearOpen(false)
+              setBulkError(null)
+            }}
+          />
         </>
       )}
     </div>

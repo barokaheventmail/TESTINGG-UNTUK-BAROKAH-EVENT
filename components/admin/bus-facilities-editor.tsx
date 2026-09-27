@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { Check, ChevronDown, Loader2, Plus, Sparkles, Trash2 } from 'lucide-react'
 import { FACILITY_ICONS, FacilityIconBadge } from '@/components/facility-icon'
+import { ConfirmBulkDialog } from '@/components/admin/confirm-bulk-dialog'
 import {
   FACILITY_ICON_GROUPS,
   FACILITY_ICON_LABELS,
@@ -21,16 +22,22 @@ export function BusFacilitiesEditor({
   busId,
   busName,
   initialFacilities,
+  totalBuses,
+  busesWithFacilities,
 }: {
   eventId: string
   busId: string
   busName: string
   initialFacilities: string | null
+  totalBuses: number
+  busesWithFacilities: number
 }) {
   const router = useRouter()
   const [items, setItems] = useState<Facility[]>(() => parseFacilities({ facilities: initialFacilities }))
   const [loading, setLoading] = useState(false)
   const [confirmClear, setConfirmClear] = useState(false)
+  const [bulkClearOpen, setBulkClearOpen] = useState(false)
+  const [bulkError, setBulkError] = useState<string | null>(null)
   const [status, setStatus] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null)
   const [openPicker, setOpenPicker] = useState<number | null>(null)
   const nameRefs = useRef<(HTMLInputElement | null)[]>([])
@@ -117,6 +124,31 @@ export function BusFacilitiesEditor({
     } catch (err) {
       setConfirmClear(false)
       setStatus({ kind: 'err', msg: err instanceof Error ? err.message : 'Gagal menghapus fasilitas.' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function clearAllFacilities() {
+    setLoading(true)
+    setBulkError(null)
+    try {
+      const res = await fetch(`/api/admin/events/${eventId}/bus/${busId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clearFacilities: true, applyToAll: true }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Gagal menghapus fasilitas semua armada.')
+      setItems([])
+      setBulkClearOpen(false)
+      setStatus({
+        kind: 'ok',
+        msg: `Fasilitas dihapus di ${(data.buses ?? 0).toLocaleString('id-ID')} armada.`,
+      })
+      router.refresh()
+    } catch (err) {
+      setBulkError(err instanceof Error ? err.message : 'Gagal menghapus fasilitas semua armada.')
     } finally {
       setLoading(false)
     }
@@ -348,6 +380,19 @@ export function BusFacilitiesEditor({
           {loading ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
           {confirmClear ? 'Yakin, hapus?' : 'Hapus Semua Fasilitas'}
         </button>
+        <button
+          type="button"
+          onClick={() => {
+            setBulkError(null)
+            setBulkClearOpen(true)
+          }}
+          disabled={loading || busesWithFacilities === 0}
+          title="Menghapus fasilitas di seluruh armada event ini sekaligus"
+          className="inline-flex items-center gap-1.5 rounded-full border border-[#dfe4e8] px-4 py-2.5 text-xs font-bold text-[#c0392b] transition-colors hover:bg-[#fdf1f0] active:scale-95 disabled:opacity-60"
+        >
+          <Trash2 size={13} />
+          Hapus di Semua Armada
+        </button>
       </div>
 
       {status && (
@@ -360,6 +405,21 @@ export function BusFacilitiesEditor({
           {status.msg}
         </p>
       )}
+
+      <ConfirmBulkDialog
+        open={bulkClearOpen}
+        title="Hapus fasilitas semua armada?"
+        impact={`${busesWithFacilities.toLocaleString('id-ID')} dari ${totalBuses.toLocaleString('id-ID')} armada akan kehilangan daftar fasilitasnya.`}
+        note="Kartu fasilitas langsung hilang dari panduan peserta, crew, dan armada untuk semua bus. Data peserta tidak ikut berubah."
+        error={bulkError}
+        confirmLabel="Ya, hapus semua"
+        loading={loading}
+        onConfirm={clearAllFacilities}
+        onClose={() => {
+          setBulkClearOpen(false)
+          setBulkError(null)
+        }}
+      />
     </div>
   )
 }

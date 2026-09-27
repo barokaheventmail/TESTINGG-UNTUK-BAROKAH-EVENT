@@ -135,6 +135,17 @@ export function getValue(d: LogDetail, key: string): string | number | null {
   return typeof v === 'string' || typeof v === 'number' ? v : null
 }
 
+// Aksi massal (hapus layout kursi / fasilitas di seluruh armada) memakai satu baris
+// log dengan scope 'all' + jumlah armada, bukan satu log per armada.
+function isAllScope(d: LogDetail): boolean {
+  return d != null && d.scope === 'all'
+}
+
+function busesLabel(d: LogDetail): string {
+  const n = getValue(d, 'buses')
+  return `${typeof n === 'number' ? n.toLocaleString('id-ID') : '???'} armada`
+}
+
 export function labelLog(action: string): string {
   for (const g of LOG_ACTIONS) {
     const f = g.actions.find((a) => a.value === action)
@@ -198,8 +209,9 @@ export function formatLogDetail(action: string, detail: LogDetail): string {
       return applied > 0 ? `${base} + diterapkan ke ${applied.toLocaleString('id-ID')} armada lain` : base
     }
     case 'bus.seatLayoutClear': {
+      const all = isAllScope(detail)
       const n = getValue(detail, 'name')
-      return `Layout kursi ${n ?? '???'} dihapus`
+      return all ? `Layout kursi dihapus di ${busesLabel(detail)}` : `Layout kursi ${n ?? '???'} dihapus`
     }
     case 'bus.facilities': {
       const n = getValue(detail, 'name')
@@ -212,8 +224,9 @@ export function formatLogDetail(action: string, detail: LogDetail): string {
       return applied > 0 ? `${base} + diterapkan ke ${applied.toLocaleString('id-ID')} armada lain` : base
     }
     case 'bus.facilitiesClear': {
+      const all = isAllScope(detail)
       const n = getValue(detail, 'name')
-      return `Fasilitas ${n ?? '???'} dihapus`
+      return all ? `Fasilitas dihapus di ${busesLabel(detail)}` : `Fasilitas ${n ?? '???'} dihapus`
     }
     case 'busCrew.create': {
       const n = getValue(detail, 'name') ?? getValue(detail, 'username') ?? '???'
