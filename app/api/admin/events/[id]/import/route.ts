@@ -3,11 +3,13 @@ import { randomUUID } from 'crypto'
 import { requireAdminSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
-import { parseWorkbook } from '@/lib/excel'
+import { buildPreview, parseWorkbook } from '@/lib/excel'
 import { ticketCodeFromToken } from '@/lib/scan'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024
 const MAX_ROWS = 50000
+const ACCEPTED_EXT = ['xlsx', 'xlsm', 'xls', 'csv', 'ods'] as const
+const ACCEPTED_LABEL = '.xlsx, .xlsm, .xls, .csv, .ods'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -35,20 +37,35 @@ export async function POST(request: NextRequest, { params }: Params) {
   if (file.size > MAX_FILE_SIZE) {
     return NextResponse.json({ error: 'Ukuran file maksimal 10MB.' }, { status: 400 })
   }
-  if (!/\.(xlsx|xls)$/i.test(file.name)) {
-    return NextResponse.json({ error: 'Format file harus .xlsx atau .xls.' }, { status: 400 })
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
+  if (!ACCEPTED_EXT.includes(ext as (typeof ACCEPTED_EXT)[number])) {
+    return NextResponse.json({ error: `Format file harus salah satu dari ${ACCEPTED_LABEL}.` }, { status: 400 })
   }
+
+  // Preview: parse saja, tidak menyentuh database. Admin bisa cek dulu cara
+  // file dibaca baru menekan Simpan.
+  const isPreview = formData.get('preview') === '1'
+  // "overwrite" membuat sel kosong menimpa data yang sudah ada. Default: sel
+  // kosong tidak menghapus data lama.
+  const overwriteEmpty = formData.get('overwrite') === '1'
 
   let parsed
   try {
-    parsed = parseWorkbook(await file.arrayBuffer())
+    parsed = parseWorkbook(await file.arrayBuffer(), file.name)
   } catch (e) {
-    logger.error('excel parse failed', { eventId: id, error: e instanceof Error ? e.message : 'unknown' })
-    return NextResponse.json({ error: 'Gagal membaca file Excel. Pastikan format sesuai template.' }, { status: 400 })
+    logger.error('excel parse failed', { eventId: id, file: file.name, error: e instanceof Error ? e.message : 'unknown' })
+    return NextResponse.json({ error: `Gagal membaca file ${ext.toUpperCase()}. Pastikan file tidak rusak atau dikunci password.` }, { status: 400 })
   }
 
   if (parsed.buses.length === 0) {
-    return NextResponse.json({ error: 'Tidak ada data peserta ditemukan di file.' }, { status: 400 })
+    const notes = parsed.diagnostics.sheets.flatMap((s) => s.notes)
+    return NextResponse.json(
+      {
+        error: 'Tidak ada data peserta yang bisa dibaca dari file ini.',
+        notes: parsed.diagnostics.warnings.length ? parsed.diagnostics.warnings : notes,
+      },
+      { status: 400 },
+    )
   }
 
   const totalRows = parsed.buses.reduce((acc, b) => acc + b.participants.length, 0)
@@ -57,6 +74,10 @@ export async function POST(request: NextRequest, { params }: Params) {
       { error: `File terlalu besar: ${totalRows} baris. Maksimal ${MAX_ROWS} baris per file. Pisahkan menjadi beberapa file.` },
       { status: 400 },
     )
+  }
+
+  if (isPreview) {
+    return NextResponse.json({ ok: true, preview: true, ...buildPreview(parsed) })
   }
 
   const busResults: { name: string; created: number; updated: number; skipped: number }[] = []
@@ -73,27 +94,47 @@ export async function POST(request: NextRequest, { params }: Params) {
           update: { order: i + 1 },
         })
 
+        // Prefetch sekali per bus: tanpa ini tiap baris butuh 1 findUnique
+        // tambahan di dalam transaksi (50k baris = 50k query sia-sia).
+        const existing = await tx.participant.findMany({
+          where: { busId: busRec.id },
+          select: { id: true, order: true },
+        })
+        const byOrder = new Map(existing.map((e) => [e.order, e.id]))
+
         let created = 0
         let updated = 0
         for (const p of bus.participants) {
-          const data = {
+          const values = {
             name: p.name,
-            birthPlace: p.birthPlace ?? null,
-            birthDate: p.birthDate ?? null,
-            phone: p.phone ?? null,
-            seat: p.seat ?? null,
-            room: p.room ?? null,
-            vw: p.vw ?? null,
+            birthPlace: p.birthPlace,
+            birthDate: p.birthDate,
+            phone: p.phone,
+            seat: p.seat,
+            room: p.room,
+            vw: p.vw,
           }
-          const exists = await tx.participant.findUnique({
-            where: { eventId_busId_order: { eventId: id, busId: busRec.id, order: p.order } },
-            select: { id: true },
-          })
-          if (exists) {
-            await tx.participant.update({ where: { id: exists.id }, data })
+          // `undefined` berarti "jangan sentuh field ini" supaya data lama
+          // tidak hilang saat file yang diimport lebih sepi.
+          const data = overwriteEmpty
+            ? { ...values, birthPlace: values.birthPlace ?? null, birthDate: values.birthDate ?? null, phone: values.phone ?? null, seat: values.seat ?? null, room: values.room ?? null, vw: values.vw ?? null }
+            : {
+                name: values.name,
+                ...(values.birthPlace != null ? { birthPlace: values.birthPlace } : {}),
+                ...(values.birthDate != null ? { birthDate: values.birthDate } : {}),
+                ...(values.phone != null ? { phone: values.phone } : {}),
+                ...(values.seat != null ? { seat: values.seat } : {}),
+                ...(values.room != null ? { room: values.room } : {}),
+                ...(values.vw != null ? { vw: values.vw } : {}),
+              }
+
+          const existsId = byOrder.get(p.order)
+          if (existsId) {
+            await tx.participant.update({ where: { id: existsId }, data })
             updated++
           } else {
             const token = randomUUID()
+            // Field yang undefined otomatis menjadi NULL saat create.
             await tx.participant.create({
               data: { ...data, eventId: id, busId: busRec.id, order: p.order, token, ticketCode: ticketCodeFromToken(event.date, token) },
             })
@@ -111,22 +152,42 @@ export async function POST(request: NextRequest, { params }: Params) {
           eventId: id,
           userId: session.sub,
           action: 'event.import',
-          detail: { buses: busResults, created: totalCreated, updated: totalUpdated, skipped: parsed.skipped as number },
+          detail: {
+            buses: busResults,
+            created: totalCreated,
+            updated: totalUpdated,
+            skipped: parsed.skipped,
+            sheetsIgnored: parsed.diagnostics.sheets.filter((s) => s.status === 'ignored').length,
+            sheetsEmpty: parsed.diagnostics.sheets.filter((s) => s.status === 'empty').length,
+            guessedColumns: parsed.diagnostics.sheets.reduce(
+              (n, s) => n + s.mappings.filter((m) => m.kind === 'inferred' || m.kind === 'positional').length,
+              0,
+            ),
+          },
         },
       })
     })
   } catch (e) {
-    logger.error('excel import failed', { eventId: id, error: e instanceof Error ? e.message : 'unknown' })
-    return NextResponse.json({ error: 'Gagal menyimpan data import.' }, { status: 500 })
+    logger.error('excel import failed', { eventId: id, file: file.name, error: e instanceof Error ? e.message : 'unknown' })
+    return NextResponse.json({ error: 'Gagal menyimpan data import. Tidak ada perubahan yang tersimpan.' }, { status: 500 })
   }
 
-  logger.info('excel imported', { eventId: id, by: session.username, created: totalCreated, updated: totalUpdated })
+  logger.info('excel imported', { eventId: id, by: session.username, created: totalCreated, updated: totalUpdated, file: file.name })
 
   return NextResponse.json({
     ok: true,
-    buses: busResults,
     created: totalCreated,
     updated: totalUpdated,
-    skipped: parsed.skipped as number,
+    skipped: parsed.skipped,
+    buses: busResults,
+    warnings: parsed.diagnostics.warnings,
+    sheets: parsed.diagnostics.sheets.map((s) => ({
+      name: s.name,
+      status: s.status,
+      headerRow: s.headerRow,
+      participants: s.participants,
+      mappings: s.mappings,
+      notes: s.notes,
+    })),
   })
 }
