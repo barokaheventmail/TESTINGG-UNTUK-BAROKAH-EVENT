@@ -101,6 +101,7 @@ export default async function EventDetail({
     seatRows: b.seatRows,
     seatCols: b.seatCols,
     seatLayout: b.seatLayout,
+    facilities: b.facilities,
   }))
 
   const uniqueCrewCount = new Set(event.buses.flatMap((b) => b.workers.map((w) => w.user.id))).size

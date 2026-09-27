@@ -26,6 +26,8 @@ const ACTION_GROUP: Record<string, LogGroup> = {
   'bus.delete': 'Armada',
   'bus.seatLayout': 'Armada',
   'bus.seatLayoutClear': 'Armada',
+  'bus.facilities': 'Armada',
+  'bus.facilitiesClear': 'Armada',
   'busCrew.create': 'Armada',
   'busCrew.update': 'Armada',
   'busCrew.remove': 'Armada',
@@ -81,6 +83,8 @@ export const LOG_ACTIONS: { group: LogGroup; actions: { value: string; label: st
       { value: 'bus.delete', label: 'Hapus bus' },
       { value: 'bus.seatLayout', label: 'Atur layout kursi' },
       { value: 'bus.seatLayoutClear', label: 'Hapus layout kursi' },
+      { value: 'bus.facilities', label: 'Atur fasilitas armada' },
+      { value: 'bus.facilitiesClear', label: 'Hapus fasilitas armada' },
       { value: 'busCrew.create', label: 'Tambah crew' },
       { value: 'busCrew.update', label: 'Ubah crew' },
       { value: 'busCrew.remove', label: 'Lepas crew' },
@@ -196,6 +200,20 @@ export function formatLogDetail(action: string, detail: LogDetail): string {
     case 'bus.seatLayoutClear': {
       const n = getValue(detail, 'name')
       return `Layout kursi ${n ?? '???'} dihapus`
+    }
+    case 'bus.facilities': {
+      const n = getValue(detail, 'name')
+      const count = detail && typeof detail.count === 'number' ? detail.count : 0
+      const names = Array.isArray(detail?.names) ? (detail.names as unknown[]).filter((v) => typeof v === 'string') : []
+      const applied = detail && typeof detail.appliedToAll === 'number' ? detail.appliedToAll : 0
+      const list = names.slice(0, 4).join(', ')
+      const more = names.length > 4 ? `, +${names.length - 4} lainnya` : ''
+      const base = `${count} fasilitas${n ? ` • ${n}` : ''}${list ? ` (${list}${more})` : ''}`
+      return applied > 0 ? `${base} + diterapkan ke ${applied.toLocaleString('id-ID')} armada lain` : base
+    }
+    case 'bus.facilitiesClear': {
+      const n = getValue(detail, 'name')
+      return `Fasilitas ${n ?? '???'} dihapus`
     }
     case 'busCrew.create': {
       const n = getValue(detail, 'name') ?? getValue(detail, 'username') ?? '???'

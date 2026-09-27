@@ -1,6 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import * as XLSX from 'xlsx'
 import { parseWorkbook, parseDate } from '../lib/excel'
+import {
+  FACILITY_MAX_NAME,
+  FACILITY_MAX_NOTE,
+  FACILITY_MAX_ITEMS,
+  FACILITY_ICON_GROUPS,
+  FACILITY_ICON_LABELS,
+  FACILITY_ICON_OPTIONS,
+  parseFacilities,
+  serializeFacilities,
+  validateFacilities,
+} from '../lib/facilities'
+import { FACILITY_ICONS } from '../components/facility-icon'
 import { encodeToken, decodeToken, ticketCodeFromToken } from '../lib/scan'
 
 const HEADERS = ['No', 'Nama Lengkap', 'Tempat Lahir', 'Tanggal Lahir', 'No Telp/Hp', 'No Kursi', 'No Kamar', 'No VW']
@@ -144,5 +156,72 @@ describe('qr token', () => {
     const date = new Date('2026-09-17T00:00:00.000Z')
     expect(ticketCodeFromToken(date, 'cmuh1z9zw0008ifaat10qud8e')).toBe('BTH-26-QUD8E')
     expect(ticketCodeFromToken(date, 'cmu0000l3prf')).toBe('BTH-26-L3PRF')
+  })
+})
+
+describe('fasilitas', () => {
+  it('parseFacilities membaca JSON dan membuang item tanpa nama', () => {
+    const raw = JSON.stringify([
+      { icon: 'snowflake', name: 'AC', note: 'Pendingin kabin' },
+      { icon: 'wifi', name: '   ', note: 'kosong' },
+      { icon: 'usb-plug', name: 'USB', note: '' },
+    ])
+    expect(parseFacilities({ facilities: raw })).toEqual([
+      { icon: 'snowflake', name: 'AC', note: 'Pendingin kabin' },
+      { icon: 'usb-plug', name: 'USB', note: '' },
+    ])
+  })
+  it('parseFacilities aman untuk null, JSON rusak & ikon asing', () => {
+    expect(parseFacilities({ facilities: null })).toEqual([])
+    expect(parseFacilities({ facilities: '{bukan json' })).toEqual([])
+    expect(parseFacilities('{"a":1}')).toEqual([])
+    expect(parseFacilities({ facilities: JSON.stringify([{ icon: 'nope', name: 'WiFi' }]) })).toEqual([
+      { icon: 'armchair', name: 'WiFi', note: '' },
+    ])
+  })
+  it('serializeFacilities mengembalikan null saat kosong', () => {
+    expect(serializeFacilities([])).toBeNull()
+    const json = serializeFacilities([{ icon: 'wifi', name: 'WiFi', note: 'Gratis' }])
+    expect(parseFacilities({ facilities: json })).toEqual([{ icon: 'wifi', name: 'WiFi', note: 'Gratis' }])
+  })
+  it('validateFacilities menolak ikon tak dikenal & melebihi batas', () => {
+    expect(validateFacilities([{ icon: 'nope', name: 'AC' }]).error).toBeTruthy()
+    expect(validateFacilities([{ icon: 'wifi', name: 'x'.repeat(FACILITY_MAX_NAME + 1) }]).error).toBeTruthy()
+    expect(validateFacilities([{ icon: 'wifi', name: 'WiFi', note: 'x'.repeat(FACILITY_MAX_NOTE + 1) }]).error).toBeTruthy()
+    expect(validateFacilities('bukan array').error).toBeTruthy()
+    const many = Array.from({ length: FACILITY_MAX_ITEMS + 1 }, (_, i) => ({ icon: 'wifi', name: `F${i}`, note: '' }))
+    expect(validateFacilities(many).error).toBeTruthy()
+  })
+  it('validateFacilities membersihkan input dan mengabaikan baris kosong', () => {
+    const res = validateFacilities([
+      { icon: 'tv', name: ' TV ', note: ' Layar ' },
+      { icon: 'wifi', name: '', note: 'tanpa nama' },
+    ])
+    expect(res.error).toBeUndefined()
+    expect(res.items).toEqual([{ icon: 'tv', name: 'TV', note: 'Layar' }])
+  })
+  it('katalog ikon konsisten: tanpa duplikat, semua punya label & komponen', () => {
+    const all = FACILITY_ICON_GROUPS.flatMap((g) => [...g.icons])
+    expect(new Set(all).size).toBe(all.length)
+    expect(FACILITY_ICON_OPTIONS).toEqual(all)
+    expect(all.length).toBeGreaterThanOrEqual(50)
+    for (const icon of all) {
+      expect(FACILITY_ICON_LABELS[icon], `label ${icon}`).toBeTruthy()
+      expect(FACILITY_ICONS[icon], `komponen ${icon}`).toBeTruthy()
+    }
+    for (const icon of Object.keys(FACILITY_ICONS)) {
+      expect(FACILITY_ICON_OPTIONS, `katalog memuat ${icon}`).toContain(icon)
+    }
+    expect(FACILITY_ICON_OPTIONS).toContain('ellipsis')
+  })
+  it('validateFacilities menerima ikon baru & tetap menolak yang asing', () => {
+    const res = validateFacilities([
+      { icon: 'ellipsis', name: 'Lainnya', note: '' },
+      { icon: 'bus-front', name: 'Armada', note: '' },
+      { icon: 'plug-zap', name: 'Colokan cepat', note: '' },
+    ])
+    expect(res.error).toBeUndefined()
+    expect(res.items.map((i) => i.icon)).toEqual(['ellipsis', 'bus-front', 'plug-zap'])
+    expect(validateFacilities([{ icon: 'smart-tv', name: 'X' }]).error).toBeTruthy()
   })
 })

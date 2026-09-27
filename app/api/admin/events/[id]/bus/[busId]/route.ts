@@ -4,6 +4,7 @@ import { requireAdminSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
 import { seatCount, serializeSeatLayout, validateSeatShape } from '@/lib/seat'
+import { serializeFacilities, validateFacilities } from '@/lib/facilities'
 
 type Params = { params: Promise<{ id: string; busId: string }> }
 
@@ -44,6 +45,68 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       return NextResponse.json({ bus })
     } catch (err) {
       return NextResponse.json({ error: 'Gagal menghapus layout kursi.' }, { status: 500 })
+    }
+  }
+
+  if (body.clearFacilities === true) {
+    if (!existing.facilities) {
+      return NextResponse.json({ bus: existing })
+    }
+    try {
+      const bus = await prisma.$transaction(async (tx) => {
+        const updated = await tx.bus.update({ where: { id: busId }, data: { facilities: null } })
+        await tx.activityLog.create({
+          data: { eventId: id, userId: session.sub, action: 'bus.facilitiesClear', detail: { name: existing.name } },
+        })
+        return updated
+      })
+      logger.info('bus facilities cleared', { eventId: id, by: session.username, busId, name: existing.name })
+      return NextResponse.json({ bus })
+    } catch (err) {
+      return NextResponse.json({ error: 'Gagal menghapus fasilitas armada.' }, { status: 500 })
+    }
+  }
+
+  if (body.facilities !== undefined) {
+    const parsed = validateFacilities(body.facilities)
+    if (parsed.error) return NextResponse.json({ error: parsed.error }, { status: 400 })
+
+    const value = serializeFacilities(parsed.items)
+    const applyToAll = body.applyToAll === true
+    const noop = value === null && !existing.facilities
+    if (noop) return NextResponse.json({ bus: existing })
+
+    try {
+      const bus = await prisma.$transaction(async (tx) => {
+        const updated = await tx.bus.update({ where: { id: busId }, data: { facilities: value } })
+        let appliedToAll = 0
+        if (applyToAll) {
+          const result = await tx.bus.updateMany({
+            where: { eventId: id, id: { not: busId } },
+            data: { facilities: value },
+          })
+          appliedToAll = result.count
+        }
+        await tx.activityLog.create({
+          data: {
+            eventId: id,
+            userId: session.sub,
+            action: 'bus.facilities',
+            detail: { name: updated.name, count: parsed.items.length, names: parsed.items.map((f) => f.name), appliedToAll },
+          },
+        })
+        return updated
+      })
+      logger.info('bus facilities updated', {
+        eventId: id,
+        by: session.username,
+        busId,
+        count: parsed.items.length,
+        applyToAll,
+      })
+      return NextResponse.json({ bus })
+    } catch (err) {
+      return NextResponse.json({ error: 'Gagal menyimpan fasilitas armada.' }, { status: 500 })
     }
   }
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { parseFacilities } from '@/lib/facilities'
 import { logger } from '@/lib/logger'
 
 export async function GET(request: NextRequest) {
@@ -22,7 +23,7 @@ export async function GET(request: NextRequest) {
       eventId,
       ...(busIds.length ? { id: { in: busIds } } : {}),
     },
-    select: { id: true, name: true, seatRows: true, seatCols: true, seatLayout: true },
+    select: { id: true, name: true, seatRows: true, seatCols: true, seatLayout: true, facilities: true },
     orderBy: { order: 'asc' },
   })
 
@@ -55,6 +56,7 @@ export async function GET(request: NextRequest) {
       seatLayout: bus.seatLayout,
       total: seats.length,
       filled: seats.filter((p) => p.scannedAt !== null).length,
+      facilities: parseFacilities(bus.facilities),
       seats: seats.map((p) => ({
         seat: p.seat,
         order: p.order,

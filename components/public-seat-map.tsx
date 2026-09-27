@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { Armchair, BadgeCheck, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Loader2, SearchX } from 'lucide-react'
 import { SeatGrid, type SeatCell } from '@/components/seat-grid'
+import { FacilityIconBadge } from '@/components/facility-icon'
+import type { Facility } from '@/lib/facilities'
 
 type PublicBus = {
   busId: string
@@ -13,6 +15,7 @@ type PublicBus = {
   total: number
   filled: number
   seats: SeatCell[]
+  facilities: Facility[]
 }
 
 type Selected = { seat: string; name: string; busName: string }
@@ -35,6 +38,7 @@ export function PublicSeatMap({
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<Selected | null>(null)
   const [rosterOpen, setRosterOpen] = useState(true)
+  const [facilityOpen, setFacilityOpen] = useState(true)
 
   const isMyBus = initialBusId != null && selectedId === initialBusId
   const mySeat = isMyBus ? highlightSeat : null
@@ -238,6 +242,41 @@ export function PublicSeatMap({
               )
             })}
             </div>
+          )}
+        </div>
+      )}
+
+      {!loading && data && data.facilities && data.facilities.length > 0 && (
+        <div className="mt-4 overflow-hidden rounded-2xl border border-[#edf0f3]">
+          <button
+            type="button"
+            onClick={() => setFacilityOpen((o) => !o)}
+            aria-expanded={facilityOpen}
+            aria-label={facilityOpen ? 'Tutup daftar fasilitas' : 'Buka daftar fasilitas'}
+            className="flex w-full items-center justify-between gap-3 bg-[linear-gradient(100deg,#1b4f9c_0%,#163d78_55%,#0d2850_100%)] px-4 py-2.5 text-left transition-[filter] duration-150 hover:brightness-110 active:scale-[0.995]"
+          >
+            <p className="min-w-0 truncate text-sm font-bold text-white">Fasilitas Armada — {data.busName}</p>
+            <span className="flex shrink-0 items-center gap-2">
+              <span className="rounded-full border border-white/25 bg-white/10 px-2.5 py-0.5 text-[11px] font-bold tabular-nums text-white">
+                {data.facilities.length} fasilitas
+              </span>
+              {facilityOpen ? <ChevronUp size={14} className="text-white/80" /> : <ChevronDown size={14} className="text-white/80" />}
+            </span>
+          </button>
+          {facilityOpen && (
+            <ul className="grid gap-2 p-3 sm:grid-cols-2">
+              {data.facilities.map((f, i) => (
+                <li key={`${f.name}-${i}`} className="flex items-start gap-2.5 rounded-xl bg-[#f8fafc] px-3 py-2.5">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#eef4fb] text-[#1b4f9c]">
+                    <FacilityIconBadge icon={f.icon} />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[13px] font-bold text-[#1b3555]">{f.name}</p>
+                    {f.note && <p className="text-[11px] leading-relaxed text-[#657080]">{f.note}</p>}
+                  </div>
+                </li>
+              ))}
+            </ul>
           )}
         </div>
       )}

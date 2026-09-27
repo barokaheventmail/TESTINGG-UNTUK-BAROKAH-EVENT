@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { Armchair, Check, ChevronDown, Loader2, Minus, Plus, Trash2, Users } from 'lucide-react'
+import { BusFacilitiesEditor } from '@/components/admin/bus-facilities-editor'
 import { parseSeatLayout, seatCount, seatNumberMatrix, type SeatLayout } from '@/lib/seat'
 
 export type SeatBus = {
@@ -12,6 +13,7 @@ export type SeatBus = {
   seatRows: number
   seatCols: number
   seatLayout: string | null
+  facilities: string | null
 }
 
 const MIN = 1
@@ -299,6 +301,16 @@ export function SeatLayoutEditor({ eventId, buses }: { eventId: string; buses: S
                 )}
               </div>
             </>
+          )}
+
+          {selected && (
+            <BusFacilitiesEditor
+              key={selected.id}
+              eventId={eventId}
+              busId={selected.id}
+              busName={selected.name}
+              initialFacilities={selected.facilities}
+            />
           )}
         </>
       )}
