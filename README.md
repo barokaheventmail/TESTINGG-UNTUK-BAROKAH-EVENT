@@ -4,7 +4,7 @@ Next.js (App Router) 16 + Prisma + PostgreSQL. URL utama: `http://localhost:3000
 
 ## Alur utama
 - **Publik**: halaman event → kotak **Cari Nama Peserta** → ketik nama → **Lihat Tiket & QR** → tunjukkan QR ke crew. (Pencarian di hero beranda sengaja non-aktif.)
-- **Crew**: buka `/crew` (login) → scan QR kamera → kehadiran **otomatis tercatat**.
+- **Crew**: buka `/crew` (login) → scan QR kamera → kehadiran **otomatis tercatat**. Event berstatus `CLOSED` masih bisa dibaca (daftar nama, peta kursi, riwayat) tapi tidak bisa discan; `DRAFT` tidak terlihat sama sekali.
 - **Admin**: buka `/admin` (login) → kelola event, **import Excel** (1 sheet = 1 bus), lihat daftar/hadir, **Cetak QR**.
 
 Akun awal (dari `.env`): admin / `admin123` dan crew / `crew123`.
@@ -150,3 +150,9 @@ middleware.ts         # proteksi /admin (ADMIN) & /crew (CREW)
 - Rol ADMIN hanya bisa akses `/admin`; CREW + ADMIN bisa `/crew`.
 - QR memuat token unik per peserta (`BTHT:<token>`); token tak bisa ditebak.
 - Rate-limit publik bisa ditambahkan di depan `/api/public/search` saat trafik besar.
+
+## Kehadiran: sumber data & aturan
+- Sumber kebenaran kehadiran adalah `Participant.scannedAt` (siapa pun yang mencatat: admin atau crew). Tabel `ScanLog` adalah **jejak audit** dan tidak boleh dihapus otomatis.
+- **Reset Kehadiran** (panel admin) mengosongkan `scannedAt` tetapi **mempertahankan `ScanLog`**, jadi riwayat scan crew tetap utuh. Halaman publik diberi tahu sinkron ulang lewat flag `reset` dari `GET /api/events/[id]/attendance`.
+- Armadanya **tanpa crew** akan memunculkan peringatan di tab Peserta: pesertanya terhitung di admin, tapi tidak muncul di aplikasi crew dan QR-nya ditolak.
+- Di app crew, status riwayat: `Hadir` (baru), `Sudah hadir` (scan ulang), `Kehadiran dicabut` (direset admin).

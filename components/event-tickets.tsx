@@ -166,13 +166,18 @@ export function EventTickets({
           total?: number
           perBus?: Record<string, { attended?: number; total?: number }>
           seq?: string | null
+          reset?: boolean
           changes?: { type?: 'add' | 'remove'; participantId?: string; busId?: string }[]
         } | null
         if (!data) return
 
         const seq = typeof data.seq === 'string' ? data.seq : null
         if (seq !== lastSeq) {
-          if (lastSeq !== null && seq === null) {
+          if (data.reset) {
+            // Reset Kehadiran admin: scanLog sengaja tidak dihapus, jadi
+            // penanda kursi harus dikosongkan lewat flag ini.
+            setLivePresent((prev) => Object.fromEntries(Object.keys(prev).map((k) => [k, new Set<string>()])))
+          } else if (lastSeq !== null && seq === null) {
             setLivePresent((prev) => Object.fromEntries(Object.keys(prev).map((k) => [k, new Set<string>()])))
           } else if (seq !== null && Array.isArray(data.changes) && data.changes.length > 0) {
             const deltas = data.changes

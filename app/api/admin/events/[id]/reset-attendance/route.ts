@@ -20,18 +20,19 @@ export async function POST(_request: NextRequest, { params }: Params) {
       where: { eventId: id, scannedAt: { not: null } },
       data: { scannedAt: null, scannedById: null, scannedAtEvent: null },
     })
-    const logs = await tx.scanLog.deleteMany({ where: { participant: { eventId: id } } })
+    // ScanLog SENGAJA tidak dihapus: itu jejak audit Scan crew + riwayat
+    // "Scan saya". Sumber kebenaran kehadiran tetap `participant.scannedAt`.
     if (updated.count > 0) {
       await tx.activityLog.create({
         data: {
           eventId: id,
           userId: session.sub,
           action: 'attendance.reset',
-          detail: { participants: updated.count, logs: logs.count },
+          detail: { participants: updated.count },
         },
       })
     }
-    return { participants: updated.count, logs: logs.count }
+    return { participants: updated.count }
   })
 
   logger.info('attendance reset', { eventId: id, by: session.username, ...result })

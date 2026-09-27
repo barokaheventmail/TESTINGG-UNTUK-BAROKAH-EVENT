@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireCrewSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { countPresent, mapCrewSeats } from '@/lib/crew-seats'
+import { countPresent, isCrewVisibleEvent, mapCrewSeats } from '@/lib/crew-seats'
 
 export async function GET(request: NextRequest) {
   const session = await requireCrewSession()
@@ -27,10 +27,13 @@ export async function GET(request: NextRequest) {
     },
   })
 
-  const active = assignments.filter((a) => a.bus.event.status === 'ACTIVE')
+  // Event CLOSED ikut dibaca supaya roster/peta kursi crew tidak mendadak
+  // kosong setelah event ditutup. Statusnya dikirim ke klien untuk badge
+  // "Selesai"; scan sendiri tetap hanya untuk event ACTIVE.
+  const visible = assignments.filter((a) => isCrewVisibleEvent(a.bus.event.status))
 
   const buses = []
-  for (const a of active) {
+  for (const a of visible) {
     const participants = await prisma.participant.findMany({
       where: { busId: a.busId },
       select: { seat: true, order: true, name: true, scannedAt: true },
@@ -39,6 +42,7 @@ export async function GET(request: NextRequest) {
       busId: a.busId,
       busName: a.bus.name,
       eventTitle: a.bus.event.title,
+      eventStatus: a.bus.event.status,
       seatRows: a.bus.seatRows,
       seatCols: a.bus.seatCols,
       seatLayout: a.bus.seatLayout,

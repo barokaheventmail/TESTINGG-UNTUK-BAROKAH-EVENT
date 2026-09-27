@@ -1,13 +1,15 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Armchair, Bus, Loader2 } from 'lucide-react'
+import { Armchair, Bus, Loader2, MapPinOff } from 'lucide-react'
 import { SeatGrid, type SeatCell } from '@/components/seat-grid'
+import { unmappedSeats } from '@/lib/crew-seats'
 
 type BusSeats = {
   busId: string
   busName: string
   eventTitle: string
+  eventStatus?: string
   seatRows: number
   seatCols: number
   seatLayout: string | null
@@ -98,7 +100,14 @@ export function CrewSeatMap() {
             <div key={bus.busId} className="mt-4 rounded-2xl border border-[#edf0f3] p-4">
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="text-sm font-black text-[#1b3555]">{bus.busName}</p>
+                  <p className="flex items-center gap-2 text-sm font-black text-[#1b3555]">
+                    {bus.busName}
+                    {bus.eventStatus === 'CLOSED' && (
+                      <span className="rounded-full bg-[#f1f3f5] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#657080]">
+                        Selesai
+                      </span>
+                    )}
+                  </p>
                   <p className="truncate text-[11px] text-[#9aa3af]">{bus.eventTitle}</p>
                 </div>
                 <span
@@ -111,31 +120,65 @@ export function CrewSeatMap() {
               </div>
 
               <div className="mt-3 space-y-2">
-                {bus.seatRows > 0 && bus.seatCols > 0 ? (
-                  <>
-                    <SeatGrid
-                      bus={bus}
-                      onSelect={(s) => setSelected({ seat: s.seat, name: s.name, busName: bus.busName, eventTitle: bus.eventTitle })}
-                    />
-                    <div className="flex items-center gap-4 text-[11px] font-semibold text-[#657080]">
-                      <span className="flex items-center gap-1.5">
-                        <span className="inline-block h-3 w-3 rounded bg-[#2ca84a]" /> Terisi{' '}
-                        <span className="font-black text-[#2ca84a]">{bus.filled}</span>
-                      </span>
-                      <span className="flex items-center gap-1.5">
-                        <span className="inline-block h-3 w-3 rounded bg-[#eef1f4]" /> Kosong{' '}
-                        <span className="font-black text-[#657080]">{bus.total - bus.filled}</span>
-                      </span>
-                      <span className="ml-auto text-[11px] text-[#9aa3af]">Ketuk kursi hijau untuk lihat nama</span>
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-[#dfe4e8] px-4 py-8 text-center">
-                    <Armchair size={22} className="text-[#c3cad2]" />
-                    <p className="text-xs font-bold text-[#657080]">Belum ada layout kursi</p>
-                    <p className="text-[11px] text-[#9aa3af]">Peta kursi armada ini diatur oleh admin.</p>
-                  </div>
-                )}
+                {(() => {
+                  const punyaLayout = bus.seatRows > 0 && bus.seatCols > 0
+                  // Peserta yang nomornya tidak ada di layout (atau armadanya
+                  // belum punya layout) tidak bisa digambar di peta, jadi
+                  // ditampilkan terpisah supaya Peta Kursi dan Daftar Nama
+                  // tidak terlihat berbeda.
+                  const diLuarPeta = unmappedSeats(bus)
+                  return (
+                    <>
+                      {punyaLayout ? (
+                        <>
+                          <SeatGrid
+                            bus={bus}
+                            onSelect={(s) =>
+                              setSelected({ seat: s.seat, name: s.name, busName: bus.busName, eventTitle: bus.eventTitle })
+                            }
+                          />
+                          <div className="flex items-center gap-4 text-[11px] font-semibold text-[#657080]">
+                            <span className="flex items-center gap-1.5">
+                              <span className="inline-block h-3 w-3 rounded bg-[#2ca84a]" /> Terisi{' '}
+                              <span className="font-black text-[#2ca84a]">{bus.filled}</span>
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                              <span className="inline-block h-3 w-3 rounded bg-[#eef1f4]" /> Kosong{' '}
+                              <span className="font-black text-[#657080]">{bus.total - bus.filled}</span>
+                            </span>
+                            <span className="ml-auto text-[11px] text-[#9aa3af]">Ketuk kursi hijau untuk lihat nama</span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-[#dfe4e8] px-4 py-8 text-center">
+                          <Armchair size={22} className="text-[#c3cad2]" />
+                          <p className="text-xs font-bold text-[#657080]">Belum ada layout kursi</p>
+                          <p className="text-[11px] text-[#9aa3af]">Peta kursi armada ini diatur oleh admin.</p>
+                        </div>
+                      )}
+
+                      {diLuarPeta.length > 0 && (
+                        <div className="rounded-xl border border-dashed border-[#dfe4e8] bg-[#f8fafc] px-3 py-3">
+                          <p className="flex items-center gap-1.5 text-[11px] font-bold text-[#657080]">
+                            <MapPinOff size={13} className="text-[#9aa3af]" /> Di luar peta · {diLuarPeta.length} peserta
+                          </p>
+                          <p className="mt-0.5 text-[10px] text-[#9aa3af]">
+                            {punyaLayout
+                              ? 'Nomor kursinya tidak ada di layout armada ini, jadi tidak muncul di peta.'
+                              : 'Peta kursi armada ini belum diatur, jadi peserta belum bisa digambar.'}
+                          </p>
+                          <ul className="mt-2 space-y-1">
+                            {diLuarPeta.map((s) => (
+                              <li key={`${s.order}-${s.name}`} className="truncate text-[11px] font-semibold text-[#657080]">
+                                {s.name} · {s.seat ? `Kursi ${s.seat}` : 'tanpa nomor kursi'}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </>
+                  )
+                })()}
               </div>
             </div>
           ))

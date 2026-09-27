@@ -36,6 +36,8 @@ type StatusFilter = 'all' | 'attended' | 'pending'
 const PAGE_SIZE = 200
 // Batas keras dari API (`take` di-clamp ke 500).
 const API_MAX = 500
+// Cadangan: penyegaran diam-diam kalau total kehadiran tidak berubah.
+const VISIBLE_REFRESH_MS = 10000
 
 /**
  * Bus bisa dozens, jadi `<select>` native memaksa user menggulir 78 opsi tanpa
@@ -359,6 +361,18 @@ export function ParticipantTable({
       refreshVisible()
     }
   }, [totalAttended, refreshVisible])
+
+  // Penjaga terakhir: `totalAttended` hanya berubah kalau jumlahnya beda, jadi
+  // satu peserta yang di-bulk-ubah (mis. 5 orang dilepas, 5 orang lain
+  // ditandai) tidak mengubah angka total dan tabel bisa basi. Polling ringan
+  // ini menutup celah itu tanpa bergantung pada router.refresh().
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'hidden') return
+      refreshVisible()
+    }, VISIBLE_REFRESH_MS)
+    return () => window.clearInterval(timer)
+  }, [refreshVisible])
 
   // Ganti filter = konteks data berubah total, kembalikan user ke atas supaya
   // tidak melihat sisa daftar bus sebelumnya.

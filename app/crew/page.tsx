@@ -8,6 +8,7 @@ import { CrewPanels } from '@/components/crew/panels'
 import { SessionGuard } from '@/components/crew/session-guard'
 import { LogoutButton } from '@/components/admin/logout-button'
 import { waLink } from '@/lib/wa'
+import { isCrewVisibleEvent } from '@/lib/crew-seats'
 
 export const metadata: Metadata = { title: 'Scan QR Peserta – Barokah Tour', robots: { index: false } }
 
@@ -24,7 +25,10 @@ export default async function CrewPage() {
     }),
   ])
 
-  const activeAssignments = assigned.filter((a) => a.bus.event.status === 'ACTIVE')
+  // Event CLOSED tetap ditampilkan (read-only) supaya crew tidak dikira
+  // kehilangan akses begitu admin menutup event. DRAFT tetap disembunyikan.
+  const visibleAssignments = assigned.filter((a) => isCrewVisibleEvent(a.bus.event.status))
+  const closedAssignments = visibleAssignments.filter((a) => a.bus.event.status === 'CLOSED')
 
   return (
     <main className="min-h-screen bg-[#0f2a52] pb-16">
@@ -63,10 +67,10 @@ export default async function CrewPage() {
             </a>
           )}
         </div>
-        {activeAssignments.length > 0 && (
+        {visibleAssignments.length > 0 && (
           <p className="mx-auto mt-1 max-w-md text-[11px] text-white/60">
             Ditugaskan di{' '}
-            {activeAssignments.map((a, i) => (
+            {visibleAssignments.map((a, i) => (
               <span key={a.bus.id}>
                 {i > 0 && ' · '}
                 <span className="font-bold text-white">
@@ -74,6 +78,12 @@ export default async function CrewPage() {
                 </span>
               </span>
             ))}
+          </p>
+        )}
+        {closedAssignments.length > 0 && (
+          <p className="mx-auto mt-2 max-w-md rounded-full bg-[#f5b915]/15 px-3 py-1.5 text-[11px] font-semibold text-[#ffd75e]">
+            {closedAssignments.length} event sudah selesai — daftar nama &amp; peta kursi hanya bisa dibaca, scan
+            dinonaktifkan.
           </p>
         )}
       </header>

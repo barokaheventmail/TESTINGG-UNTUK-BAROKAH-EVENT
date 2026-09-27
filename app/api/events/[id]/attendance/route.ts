@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { parseSince, resolveAttendanceFeed } from '@/lib/attendance-feed'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -10,17 +11,23 @@ export async function GET(request: NextRequest, { params }: Params) {
 
   const event = await prisma.event.findUnique({ where: { id }, select: { id: true, status: true } })
   if (!event || event.status !== 'ACTIVE') {
-    return NextResponse.json({ attended: 0, total: 0, perBus: {}, seq: null, changes: [] })
+    return NextResponse.json({ attended: 0, total: 0, perBus: {}, seq: null, changes: [], reset: false })
   }
 
-  const sinceRaw = request.nextUrl.searchParams.get('since')
-  const since = sinceRaw ? new Date(sinceRaw) : null
+  const since = parseSince(request.nextUrl.searchParams.get('since'))
 
-  const [totalByBus, attendedByBus, latestLog, delta] = await Promise.all([
+  const [totalByBus, attendedByBus, latestLog, latestReset, delta] = await Promise.all([
     prisma.participant.groupBy({ by: ['busId'], where: { eventId: id }, _count: { _all: true } }),
     prisma.participant.groupBy({ by: ['busId'], where: { eventId: id, scannedAt: { not: null } }, _count: { _all: true } }),
     prisma.scanLog.findFirst({
       where: { participant: { eventId: id } },
+      orderBy: { createdAt: 'desc' },
+      select: { createdAt: true },
+    }),
+    // Reset kehadiran tidak menghapus scanLog, jadi needsinkron ulang
+    // diumbangkan lewat activityLog attendance.reset.
+    prisma.activityLog.findFirst({
+      where: { eventId: id, action: 'attendance.reset' },
       orderBy: { createdAt: 'desc' },
       select: { createdAt: true },
     }),
@@ -51,13 +58,22 @@ export async function GET(request: NextRequest, { params }: Params) {
     busId: l.participant.busId,
   }))
 
+  const feed = resolveAttendanceFeed({
+    since,
+    latestLogAt: latestLog?.createdAt ?? null,
+    latestResetAt: latestReset?.createdAt ?? null,
+  })
+
   return NextResponse.json(
     {
       attended,
       total,
       perBus,
-      seq: latestLog?.createdAt.toISOString() ?? null,
-      changes,
+      seq: feed.seq,
+      reset: feed.reset,
+      // Saat reset baru terjadi, delta sengaja dikosongkan: klien
+      // mengosongkan dulu, lalu tick berikutnya menerima scan pasca-reset.
+      changes: feed.reset ? [] : changes,
     },
     { headers: { 'Cache-Control': 'no-store' } },
   )

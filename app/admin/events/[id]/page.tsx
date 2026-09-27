@@ -20,6 +20,7 @@ import type { CredentialBus } from '@/components/admin/crew-credentials-modal'
 import { ResetAttendance } from '@/components/admin/reset-attendance'
 import { LogEntry } from '@/components/admin/log-entry'
 import { HIDDEN_LOG_ACTIONS } from '@/lib/log-labels'
+import { armadasTanpaCrew, totalPesertaTanpaCrew } from '@/lib/crew-coverage'
 import { TabBar, isEventTab, type EventTabId } from '@/components/admin/tab-bar'
 
 const MANAGEMENT_ACTIONS: string[] = ['scan.attended', 'scan.duplicate', ...HIDDEN_LOG_ACTIONS]
@@ -114,6 +115,13 @@ export default async function EventDetail({
 
   const totalParticipants = buses.reduce((acc, b) => acc + b.count, 0)
   const totalAttended = buses.reduce((acc, b) => acc + b.attended, 0)
+
+  // Peserta di armada tanpa crew tetap dihitung admin, tapi tidak akan muncul
+  // di aplikasi crew dan QR-nya ditolak => beri tahu admin sejak awal.
+  const busesWithoutCrew = armadasTanpaCrew(
+    event.buses.map((b) => ({ name: b.name, count: totalMap.get(b.id) ?? 0, workerCount: b.workers.length })),
+  )
+  const participantsWithoutCrew = totalPesertaTanpaCrew(busesWithoutCrew)
 
   const stats = (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -268,6 +276,23 @@ export default async function EventDetail({
 
       {active === 'peserta' && (
         <div className="mt-5 space-y-4">
+          {busesWithoutCrew.length > 0 && (
+            <div className="rounded-2xl border border-[#f0c4c4] bg-[#fdf0f0] p-5 shadow-sm">
+              <h2 className="flex items-center gap-1.5 text-sm font-bold text-[#c03a3a]">
+                <ShieldAlert size={15} /> {busesWithoutCrew.length} armada belum punya crew
+              </h2>
+              <p className="mt-0.5 text-xs text-[#657080]">
+                {participantsWithoutCrew} peserta ({busesWithoutCrew.map((b) => b.name).join(', ')}) tidak bisa discan
+                dari aplikasi crew sampai ada crew yang ditugaskan.
+              </p>
+              <Link
+                href={`/admin/events/${event.id}?tab=armada`}
+                className="mt-3 inline-flex items-center gap-1 rounded-full border border-[#f0c4c4] bg-white px-4 py-2 text-xs font-bold text-[#c03a3a] transition-colors duration-200 hover:bg-[#fdecec] active:scale-95"
+              >
+                Tambahkan crew di tab Armada <ArrowRight size={13} />
+              </Link>
+            </div>
+          )}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-sm font-bold text-[#1b3555]">Peserta</h2>

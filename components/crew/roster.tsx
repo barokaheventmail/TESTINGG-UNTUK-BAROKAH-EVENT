@@ -14,6 +14,7 @@ type BusSeats = {
   busId: string
   busName: string
   eventTitle: string
+  eventStatus?: string
   total: number
   filled: number
   seats: Seat[]
@@ -147,7 +148,14 @@ export function CrewRoster() {
           visible.map((bus) => (
             <div key={bus.busId} className="mt-4 overflow-hidden rounded-2xl border border-[#edf0f3]">
               <div className="flex items-center justify-between gap-3 bg-[linear-gradient(100deg,#071e3d_0%,#0d2850_55%,#163d78_100%)] px-4 py-2.5">
-                <p className="min-w-0 truncate text-sm font-bold text-white">{bus.busName}</p>
+                <p className="flex min-w-0 items-center gap-2 truncate text-sm font-bold text-white">
+                  {bus.busName}
+                  {bus.eventStatus === 'CLOSED' && (
+                    <span className="shrink-0 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white/80">
+                      Selesai
+                    </span>
+                  )}
+                </p>
                 <span className="shrink-0 rounded-full border border-[#f5b915]/30 bg-[#f5b915]/12 px-2.5 py-0.5 text-[11px] font-bold tabular-nums text-[#f7dda1]">
                   {bus.filled}/{bus.total} hadir
                 </span>

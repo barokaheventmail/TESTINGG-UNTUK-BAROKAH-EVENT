@@ -44,7 +44,7 @@ export function ResetAttendance({ eventId, attendedCount }: { eventId: string; a
   return (
     <div className="flex flex-wrap items-center gap-2">
       <span className="text-xs font-semibold text-[#1b3555]">
-        Reset semua kehadiran{attendedCount > 0 && <> ({attendedCount} sudah hadir)</>}? Riwayat scan dihapus, data peserta tetap.
+        Reset semua kehadiran{attendedCount > 0 && <> ({attendedCount} sudah hadir)</>}? Riwayat scan tetap tersimpan, data peserta tetap.
       </span>
       {error && <span className="text-xs font-semibold text-red-600">{error}</span>}
       <button

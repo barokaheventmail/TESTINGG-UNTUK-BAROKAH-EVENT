@@ -11,6 +11,7 @@ import { SessionGuard } from '@/components/crew/session-guard'
 import { LogoutButton } from '@/components/admin/logout-button'
 import { CrewProfileEditor } from '@/components/crew/profile-editor'
 import { CrewRiwayatList, type RiwayatLog, type RiwayatScope } from '@/components/crew/riwayat-list'
+import { CREW_VISIBLE_EVENT_STATUS } from '@/lib/crew-seats'
 
 export const metadata: Metadata = { title: 'Profil & Riwayat – Barokah Tour', robots: { index: false } }
 export const dynamic = 'force-dynamic'
@@ -46,8 +47,10 @@ export default async function CrewProfilPage({ searchParams }: { searchParams: S
     if (scope === 'armada') {
       // Kehadiran di armada crew, siapa pun yang mencatatnya (admin, crew lain,
       // atau device lain). Ini yang dipakai tab scan supaya sinkron dengan panel admin.
+      // Event CLOSED ikut dibaca: setelah event ditutup, riwayat tetap berguna
+      // walau tidak bisa discan lagi.
       const assignments = await prisma.busWorker.findMany({
-        where: { userId, bus: { event: { status: 'ACTIVE' } } },
+        where: { userId, bus: { event: { status: { in: [...CREW_VISIBLE_EVENT_STATUS] } } } },
         select: { busId: true },
       })
       const busIds = assignments.map((a) => a.busId)

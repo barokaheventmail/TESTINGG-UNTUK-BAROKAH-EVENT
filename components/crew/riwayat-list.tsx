@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { History, ScanBarcode, Search, Users } from 'lucide-react'
 import { formatWaktuLengkap } from '@/lib/dates'
+import { scanStatusUi } from '@/lib/crew-scan-status'
 
 export type RiwayatScope = 'armada' | 'saya'
 
@@ -129,17 +130,13 @@ export function CrewRiwayatList({ basePath, tab, scope, q, page, total, todayCou
       ) : (
         <ul className="mt-5 space-y-3">
           {logs.map((log) => {
-            const attended = log.status === 'attended'
+            const status = scanStatusUi(log.status)
             const p = log.participant
             const by = log.scannedBy
             return (
               <li key={log.id} className="flex items-start gap-3 rounded-2xl bg-white p-4 shadow-2xl">
-                <span
-                  className={`mt-0.5 shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
-                    attended ? 'bg-[#e6f4ea] text-[#2ca84a]' : 'bg-[#fff7e0] text-[#b98a12]'
-                  }`}
-                >
-                  {attended ? 'Hadir' : 'Sudah hadir'}
+                <span className={`mt-0.5 shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${status.badgeClass}`}>
+                  {status.label}
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-bold text-[#1b3555]">{p.name}</p>
