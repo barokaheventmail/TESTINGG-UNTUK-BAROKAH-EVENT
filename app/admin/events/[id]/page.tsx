@@ -11,6 +11,7 @@ import { ParticipantTable, type RowBus } from '@/components/admin/participant-ta
 import { AddParticipant } from '@/components/admin/add-participant'
 import { ArmadaActions } from '@/components/admin/armada-actions'
 import { BusArmadaSection, type BusWithWorkersData } from '@/components/admin/bus-crew'
+import { SeatLayoutEditor, type SeatBus } from '@/components/admin/seat-layout-editor'
 import { PanduanEditor } from '@/components/admin/panduan-editor'
 import { EventImage } from '@/components/admin/event-image'
 import type { GenerateBus } from '@/components/admin/generate-crew'
@@ -91,6 +92,15 @@ export default async function EventDetail({
     id: b.id,
     name: b.name,
     workerCount: b.workers.length,
+  }))
+
+  const seatBuses: SeatBus[] = event.buses.map((b) => ({
+    id: b.id,
+    name: b.name,
+    count: totalMap.get(b.id) ?? 0,
+    seatRows: b.seatRows,
+    seatCols: b.seatCols,
+    seatLayout: b.seatLayout,
   }))
 
   const uniqueCrewCount = new Set(event.buses.flatMap((b) => b.workers.map((w) => w.user.id))).size
@@ -303,6 +313,8 @@ export default async function EventDetail({
           )}
         </div>
       )}
+
+      {active === 'kursi' && <SeatLayoutEditor eventId={event.id} buses={seatBuses} />}
 
       {active === 'riwayat' && (
         <div className="relative mt-5 overflow-hidden rounded-2xl border border-[#ece3cd] bg-white shadow-[0_18px_44px_-28px_rgba(27,53,85,0.5)]">

@@ -63,6 +63,9 @@ model Bus {
   eventId   String
   name      String
   order     Int      @default(0)
+  seatRows  Int      @default(0)
+  seatCols  Int      @default(0)
+  seatLayout String?
   createdAt DateTime @default(now())
 
   event        Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)

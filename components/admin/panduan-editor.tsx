@@ -3,8 +3,10 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useRef, useState, type KeyboardEvent } from 'react'
-import { Check, ExternalLink, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
-import { parseItinerary, serializeItinerary, type ItineraryRow } from '@/lib/itinerary'
+import { CalendarDays, Check, ExternalLink, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
+import { parseItinerary, serializeItinerary, groupItineraryByDay, type ItineraryRow } from '@/lib/itinerary'
+
+type DayRows = Pick<ItineraryRow, 'time' | 'agenda' | 'keterangan'>[]
 
 export function PanduanEditor({
   eventId,
@@ -20,7 +22,11 @@ export function PanduanEditor({
   initialCrewPhotoUrl: string | null
 }) {
   const router = useRouter()
-  const [itinerary, setItinerary] = useState<ItineraryRow[]>(() => parseItinerary(initialItinerary))
+  const [dayBlocks, setDayBlocks] = useState<DayRows[]>(() =>
+    groupItineraryByDay(parseItinerary(initialItinerary)).map((g) =>
+      g.rows.map((r) => ({ time: r.time, agenda: r.agenda, keterangan: r.keterangan })),
+    ),
+  )
   const [crew, setCrew] = useState({ name: initialCrewName, phone: initialCrewPhone, photoUrl: initialCrewPhotoUrl })
   const [crewEditing, setCrewEditing] = useState(false)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
@@ -28,23 +34,46 @@ export function PanduanEditor({
   const [loading, setLoading] = useState(false)
   const [status, setStatus] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null)
 
-  const rowRefs = useRef<(HTMLInputElement | null)[]>([])
+  const rowRefs = useRef<Record<string, HTMLInputElement | null>>({})
 
-  function setItineraryRow(index: number, patch: Partial<ItineraryRow>) {
-    setItinerary((rows) => rows.map((row, i) => (i === index ? { ...row, ...patch } : row)))
+  function setDayRow(b: number, r: number, patch: Partial<DayRows[number]>) {
+    setDayBlocks((blocks) =>
+      blocks.map((rows, i) => (i === b ? rows.map((row, j) => (j === r ? { ...row, ...patch } : row)) : rows)),
+    )
   }
 
-  function itineraryEnter(i: number, col: number, e: KeyboardEvent<HTMLInputElement>) {
+  function addDayRow(b: number) {
+    setDayBlocks((blocks) => blocks.map((rows, i) => (i === b ? [...rows, { time: '', agenda: '', keterangan: '' }] : rows)))
+  }
+
+  function removeDayRow(b: number, r: number) {
+    setDayBlocks((blocks) => blocks.map((rows, i) => (i === b ? rows.filter((_, j) => j !== r) : rows)))
+  }
+
+  function addDay() {
+    setDayBlocks((blocks) => [...blocks, []])
+  }
+
+  function removeDay(b: number) {
+    setDayBlocks((blocks) => blocks.filter((_, i) => i !== b))
+  }
+
+  function dayRowEnter(b: number, r: number, col: number, e: KeyboardEvent<HTMLInputElement>) {
     if (e.key !== 'Enter') return
     e.preventDefault()
-    const next = rowRefs.current[i * 4 + col + 1]
+    const next = rowRefs.current[`${b}:${r}:${col + 1}`]
     if (next) {
       next.focus()
       return
     }
-    const nextIndex = itinerary.length
-    setItinerary((rows) => [...rows, { time: '', agenda: '', keterangan: '' }])
-    requestAnimationFrame(() => rowRefs.current[nextIndex * 4]?.focus())
+    const rowCount = dayBlocks[b]?.length
+    const nextRow = rowRefs.current[`${b}:${r + 1}:0`]
+    if (rowCount && r + 1 < rowCount && nextRow) {
+      nextRow.focus()
+      return
+    }
+    addDayRow(b)
+    requestAnimationFrame(() => rowRefs.current[`${b}:${r + 1}:0`]?.focus())
   }
 
   function parseWaktu(value: string): { start: string; end: string } {
@@ -71,7 +100,7 @@ export function PanduanEditor({
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          panduanItinerary: serializeItinerary(itinerary),
+          panduanItinerary: serializeItinerary(dayBlocks.flatMap((rows, b) => rows.map((row) => ({ ...row, day: b + 1 })))),
           crewName: crew.name.trim() || null,
           crewPhone: crew.phone.trim() || null,
           crewPhotoUrl: crew.photoUrl,
@@ -206,74 +235,117 @@ export function PanduanEditor({
       </div>
 
       <div className="rounded-2xl border border-[#dfe4e8] bg-white p-5 shadow-sm">
-        <div className="flex items-center justify-between gap-2">
+        <div>
           <h2 className="text-sm font-bold text-[#1b3555]">Itinerary Perjalanan</h2>
-          <button type="button" onClick={() => setItinerary((rows) => [...rows, { time: '', agenda: '', keterangan: '' }])} className={addBtnCls}>
-            <Plus size={12} /> Tambah Waktu
-          </button>
+          <p className="mt-0.5 text-xs text-[#657080]">
+            {dayBlocks.length} hari · {dayBlocks.reduce((n, rows) => n + rows.length, 0)} agenda
+          </p>
         </div>
-        {itinerary.length === 0 && <p className="mt-2 text-xs text-[#9aa3af]">Belum ada agenda. Isi jadwal untuk panduan peserta event ini.</p>}
-        <div className="mt-3 hidden items-center gap-2 text-[11px] font-bold uppercase tracking-wide text-[#657080] sm:flex">
-          <span className="w-full sm:w-60 sm:shrink-0 sm:pl-1">Waktu</span>
-          <span className="w-full sm:min-w-0 sm:flex-1 sm:pl-1">Agenda</span>
-          <span className="w-full sm:min-w-0 sm:flex-1 sm:pl-1">Keterangan</span>
-        </div>
-        <div className="mt-2 space-y-2 sm:mt-3">
-          {itinerary.map((row, i) => (
-            <div key={i} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
-              <div className="flex items-center gap-1 sm:w-60 sm:shrink-0">
-                <input
-                  ref={(el) => {
-                    rowRefs.current[i * 4] = el
-                  }}
-                  type="time"
-                  value={parseWaktu(row.time).start}
-                  onChange={(e) => setItineraryRow(i, { time: serializeWaktu(e.target.value, parseWaktu(row.time).end) })}
-                  onKeyDown={(e) => itineraryEnter(i, 0, e)}
-                  aria-label="Jam mulai"
-                  className={`${rowCls} min-w-0 w-full`}
-                />
-                <span className="shrink-0 text-[#9aa3af]">–</span>
-                <input
-                  ref={(el) => {
-                    rowRefs.current[i * 4 + 1] = el
-                  }}
-                  type="time"
-                  value={parseWaktu(row.time).end}
-                  onChange={(e) => setItineraryRow(i, { time: serializeWaktu(parseWaktu(row.time).start, e.target.value) })}
-                  onKeyDown={(e) => itineraryEnter(i, 1, e)}
-                  aria-label="Jam selesai (opsional)"
-                  className={`${rowCls} min-w-0 w-full`}
-                />
-              </div>
-              <input
-                ref={(el) => {
-                  rowRefs.current[i * 4 + 2] = el
-                }}
-                value={row.agenda}
-                onChange={(e) => setItineraryRow(i, { agenda: e.target.value })}
-                onKeyDown={(e) => itineraryEnter(i, 2, e)}
-                placeholder="Agenda kegiatan"
-                className={`${rowCls} w-full sm:min-w-0 sm:flex-1`}
-              />
-              <div className="flex items-center gap-2 sm:min-w-0 sm:flex-1">
-                <input
-                  ref={(el) => {
-                    rowRefs.current[i * 4 + 3] = el
-                  }}
-                  value={row.keterangan}
-                  onChange={(e) => setItineraryRow(i, { keterangan: e.target.value })}
-                  onKeyDown={(e) => itineraryEnter(i, 3, e)}
-                  placeholder="Keterangan (opsional)"
-                  className={`${rowCls} min-w-0 flex-1`}
-                />
-                <button type="button" onClick={() => setItinerary((rows) => rows.filter((_, j) => j !== i))} aria-label="Hapus agenda" className="shrink-0 rounded-lg p-2 text-[#657080] transition-colors hover:bg-red-50 hover:text-red-600">
-                  <Trash2 size={15} />
+        {dayBlocks.length === 0 ? (
+          <p className="mt-2 text-xs text-[#9aa3af]">Belum ada hari. Tambah hari baru untuk menyusun itinerary.</p>
+        ) : (
+          <div className="mt-4 space-y-4">
+            {dayBlocks.map((rows, b) => (
+              <div key={b} className="rounded-xl border border-[#e8ecf1] bg-[#fbfcfe] p-4">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-[#eef4fb] px-3 py-1 text-xs font-bold text-[#1b4f9c]">
+                    <CalendarDays size={13} /> Day {b + 1}
+                  </span>
+                  <span className="text-[11px] text-[#9aa3af]">{rows.length} agenda</span>
+                  <button
+                    type="button"
+                    onClick={() => removeDay(b)}
+                    aria-label={`Hapus hari ${b + 1}`}
+                    className="ml-auto rounded-lg p-2 text-[#657080] transition-colors hover:bg-red-50 hover:text-red-600"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+
+                {rows.length === 0 ? (
+                  <p className="mt-3 rounded-lg border border-dashed border-[#dfe4e8] px-4 py-3 text-xs text-[#9aa3af]">
+                    Belum ada agenda — susun jadwal hari ini.
+                  </p>
+                ) : (
+                  <>
+                    <div className="mt-3 hidden items-center gap-2 text-[11px] font-bold uppercase tracking-wide text-[#657080] sm:flex">
+                      <span className="w-full sm:w-60 sm:shrink-0 sm:pl-1">Waktu</span>
+                      <span className="w-full sm:min-w-0 sm:flex-1 sm:pl-1">Agenda</span>
+                      <span className="w-full sm:min-w-0 sm:flex-1 sm:pl-1">Keterangan</span>
+                    </div>
+                    <div className="mt-2 space-y-2 sm:mt-3">
+                      {rows.map((row, r) => (
+                        <div key={r} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
+                          <div className="flex items-center gap-1 sm:w-60 sm:shrink-0">
+                            <input
+                              ref={(el) => {
+                                rowRefs.current[`${b}:${r}:0`] = el
+                              }}
+                              type="time"
+                              value={parseWaktu(row.time).start}
+                              onChange={(e) => setDayRow(b, r, { time: serializeWaktu(e.target.value, parseWaktu(row.time).end) })}
+                              onKeyDown={(e) => dayRowEnter(b, r, 0, e)}
+                              aria-label="Jam mulai"
+                              className={`${rowCls} min-w-0 w-full`}
+                            />
+                            <span className="shrink-0 text-[#9aa3af]">–</span>
+                            <input
+                              ref={(el) => {
+                                rowRefs.current[`${b}:${r}:1`] = el
+                              }}
+                              type="time"
+                              value={parseWaktu(row.time).end}
+                              onChange={(e) => setDayRow(b, r, { time: serializeWaktu(parseWaktu(row.time).start, e.target.value) })}
+                              onKeyDown={(e) => dayRowEnter(b, r, 1, e)}
+                              aria-label="Jam selesai (opsional)"
+                              className={`${rowCls} min-w-0 w-full`}
+                            />
+                          </div>
+                          <input
+                            ref={(el) => {
+                              rowRefs.current[`${b}:${r}:2`] = el
+                            }}
+                            value={row.agenda}
+                            onChange={(e) => setDayRow(b, r, { agenda: e.target.value })}
+                            onKeyDown={(e) => dayRowEnter(b, r, 2, e)}
+                            placeholder="Agenda kegiatan"
+                            className={`${rowCls} w-full sm:min-w-0 sm:flex-1`}
+                          />
+                          <div className="flex items-center gap-2 sm:min-w-0 sm:flex-1">
+                            <input
+                              ref={(el) => {
+                                rowRefs.current[`${b}:${r}:3`] = el
+                              }}
+                              value={row.keterangan}
+                              onChange={(e) => setDayRow(b, r, { keterangan: e.target.value })}
+                              onKeyDown={(e) => dayRowEnter(b, r, 3, e)}
+                              placeholder="Keterangan (opsional)"
+                              className={`${rowCls} min-w-0 flex-1`}
+                            />
+                            <button type="button" onClick={() => removeDayRow(b, r)} aria-label="Hapus agenda" className="shrink-0 rounded-lg p-2 text-[#657080] transition-colors hover:bg-red-50 hover:text-red-600">
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                <button type="button" onClick={() => addDayRow(b)} className={`${addBtnCls} mt-3`}>
+                  <Plus size={12} /> Tambahkan Agenda
                 </button>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={addDay}
+          className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-[#c6d2df] py-3 text-xs font-bold text-[#1b4f9c] transition-colors hover:border-[#1b4f9c] hover:bg-[#eef4fb]"
+        >
+          <Plus size={14} /> Tambah Hari Baru
+        </button>
       </div>
 
       <div className="rounded-2xl border border-[#dfe4e8] bg-white p-5 shadow-sm">

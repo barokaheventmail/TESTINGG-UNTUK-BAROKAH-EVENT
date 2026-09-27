@@ -24,6 +24,8 @@ const ACTION_GROUP: Record<string, LogGroup> = {
   'bus.create': 'Armada',
   'bus.update': 'Armada',
   'bus.delete': 'Armada',
+  'bus.seatLayout': 'Armada',
+  'bus.seatLayoutClear': 'Armada',
   'busCrew.create': 'Armada',
   'busCrew.update': 'Armada',
   'busCrew.remove': 'Armada',
@@ -77,6 +79,8 @@ export const LOG_ACTIONS: { group: LogGroup; actions: { value: string; label: st
       { value: 'bus.create', label: 'Tambah bus' },
       { value: 'bus.update', label: 'Ubah bus' },
       { value: 'bus.delete', label: 'Hapus bus' },
+      { value: 'bus.seatLayout', label: 'Atur layout kursi' },
+      { value: 'bus.seatLayoutClear', label: 'Hapus layout kursi' },
       { value: 'busCrew.create', label: 'Tambah crew' },
       { value: 'busCrew.update', label: 'Ubah crew' },
       { value: 'busCrew.remove', label: 'Lepas crew' },
@@ -179,6 +183,19 @@ export function formatLogDetail(action: string, detail: LogDetail): string {
       const n = getValue(detail, 'name')
       const p = detail && typeof detail.participants === 'number' ? detail.participants : null
       return `Bus "${n ?? '???'}" dihapus${p !== null ? ` (${p.toLocaleString('id-ID')} peserta)` : ''}`
+    }
+    case 'bus.seatLayout': {
+      const n = getValue(detail, 'name')
+      const rows = getValue(detail, 'rows')
+      const cols = getValue(detail, 'cols')
+      const active = getValue(detail, 'active')
+      const applied = detail && typeof detail.appliedToAll === 'number' ? detail.appliedToAll : 0
+      const base = `Layout kursi ${rows}×${cols} (${typeof active === 'number' ? active : 0} kursi)${n ? ` • ${n}` : ''}`
+      return applied > 0 ? `${base} + diterapkan ke ${applied.toLocaleString('id-ID')} armada lain` : base
+    }
+    case 'bus.seatLayoutClear': {
+      const n = getValue(detail, 'name')
+      return `Layout kursi ${n ?? '???'} dihapus`
     }
     case 'busCrew.create': {
       const n = getValue(detail, 'name') ?? getValue(detail, 'username') ?? '???'

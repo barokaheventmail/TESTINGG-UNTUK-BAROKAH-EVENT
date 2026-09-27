@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client'
 import { requireAdminSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
+import { seatCount, serializeSeatLayout, validateSeatShape } from '@/lib/seat'
 
 type Params = { params: Promise<{ id: string; busId: string }> }
 
@@ -14,34 +15,111 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
   const { id, busId } = await params
 
-  let body: { name?: unknown }
+  let body: Record<string, unknown>
   try {
     body = await request.json()
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
-  const name = typeof body?.name === 'string' ? body.name.trim() : ''
-  if (!name) return NextResponse.json({ error: 'Nama bus wajib diisi.' }, { status: 400 })
 
   const existing = await prisma.bus.findFirst({ where: { id: busId, eventId: id } })
   if (!existing) return NextResponse.json({ error: 'Bus tidak ditemukan.' }, { status: 404 })
-  if (existing.name === name) return NextResponse.json({ bus: existing })
+
+  if (body.clearSeatLayout === true) {
+    if (!existing.seatRows && !existing.seatCols && !existing.seatLayout) {
+      return NextResponse.json({ bus: existing })
+    }
+    try {
+      const bus = await prisma.$transaction(async (tx) => {
+        const updated = await tx.bus.update({
+          where: { id: busId },
+          data: { seatRows: 0, seatCols: 0, seatLayout: null },
+        })
+        await tx.activityLog.create({
+          data: { eventId: id, userId: session.sub, action: 'bus.seatLayoutClear', detail: { name: existing.name } },
+        })
+        return updated
+      })
+      logger.info('bus seat layout cleared', { eventId: id, by: session.username, busId, name: existing.name })
+      return NextResponse.json({ bus })
+    } catch (err) {
+      return NextResponse.json({ error: 'Gagal menghapus layout kursi.' }, { status: 500 })
+    }
+  }
+
+  const hasSeatFields = body.seatRows !== undefined || body.seatCols !== undefined || body.seatLayout !== undefined
+
+  if (!hasSeatFields) {
+    const name = typeof body?.name === 'string' ? body.name.trim() : ''
+    if (!name) return NextResponse.json({ error: 'Nama bus wajib diisi.' }, { status: 400 })
+
+    if (existing.name === name) return NextResponse.json({ bus: existing })
+
+    try {
+      const bus = await prisma.$transaction(async (tx) => {
+        const updated = await tx.bus.update({ where: { id: busId }, data: { name } })
+        await tx.activityLog.create({
+          data: { eventId: id, userId: session.sub, action: 'bus.update', detail: { from: existing.name, to: name } },
+        })
+        return updated
+      })
+      logger.info('bus updated', { eventId: id, by: session.username, busId, from: existing.name, to: name })
+      return NextResponse.json({ bus })
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        return NextResponse.json({ error: 'Nama bus sudah ada untuk event ini.' }, { status: 409 })
+      }
+      return NextResponse.json({ error: 'Gagal memperbarui bus.' }, { status: 500 })
+    }
+  }
+
+  const shape = validateSeatShape(body.seatRows, body.seatCols, body.seatLayout)
+  if (shape.error) return NextResponse.json({ error: shape.error }, { status: 400 })
 
   try {
+    const layout = serializeSeatLayout(shape.rows, shape.cols, shape.cells)
+    const applyToAll = body.applyToAll === true
     const bus = await prisma.$transaction(async (tx) => {
-      const updated = await tx.bus.update({ where: { id: busId }, data: { name } })
+      const updated = await tx.bus.update({
+        where: { id: busId },
+        data: { seatRows: shape.rows, seatCols: shape.cols, seatLayout: layout },
+      })
+      let appliedToAll = 0
+      if (applyToAll) {
+        const result = await tx.bus.updateMany({
+          where: { eventId: id, id: { not: busId } },
+          data: { seatRows: shape.rows, seatCols: shape.cols, seatLayout: layout },
+        })
+        appliedToAll = result.count
+      }
       await tx.activityLog.create({
-        data: { eventId: id, userId: session.sub, action: 'bus.update', detail: { from: existing.name, to: name } },
+        data: {
+          eventId: id,
+          userId: session.sub,
+          action: 'bus.seatLayout',
+          detail: {
+            name: updated.name,
+            rows: shape.rows,
+            cols: shape.cols,
+            active: seatCount(shape.cells),
+            appliedToAll,
+          },
+        },
       })
       return updated
     })
-    logger.info('bus updated', { eventId: id, by: session.username, busId, from: existing.name, to: name })
+    logger.info('bus seat layout updated', {
+      eventId: id,
+      by: session.username,
+      busId,
+      rows: shape.rows,
+      cols: shape.cols,
+      active: seatCount(shape.cells),
+      applyToAll,
+    })
     return NextResponse.json({ bus })
   } catch (err) {
-    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
-      return NextResponse.json({ error: 'Nama bus sudah ada untuk event ini.' }, { status: 409 })
-    }
-    return NextResponse.json({ error: 'Gagal memperbarui bus.' }, { status: 500 })
+    return NextResponse.json({ error: 'Gagal menyimpan layout kursi.' }, { status: 500 })
   }
 }
 

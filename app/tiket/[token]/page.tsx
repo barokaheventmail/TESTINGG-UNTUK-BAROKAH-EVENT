@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
-import { BadgeCheck, Bus, Clock3, DoorOpen, MapPin } from 'lucide-react'
+import { BadgeCheck, BookOpen, Bus, Clock3, DoorOpen, MapPin } from 'lucide-react'
 import { prisma } from '@/lib/db'
 import { qrDataUrl, encodeToken } from '@/lib/scan'
 import { formatTanggalPendek } from '@/lib/dates'
@@ -134,8 +134,15 @@ export default async function TicketPage({ params }: { params: Promise<{ token: 
         </div>
 
         <Link
+          href={`/event/${p.eventId}/panduan?token=${encodeURIComponent(p.token)}`}
+          className="mt-4 flex items-center justify-center gap-2 rounded-xl border border-[#dfe4e8] bg-white px-4 py-3 text-xs font-bold text-[#1b4f9c] transition-colors duration-200 hover:bg-[#eef4fb] active:scale-[0.99] print:hidden"
+        >
+          <BookOpen size={14} /> Lihat Panduan &amp; Peta Kursi
+        </Link>
+
+        <Link
           href={`/event/${p.eventId}`}
-          className="mt-5 block text-center text-xs font-bold text-[#657080] transition-colors hover:text-[#1b4f9c]"
+          className="mt-4 block text-center text-xs font-bold text-[#657080] transition-colors hover:text-[#1b4f9c] print:hidden"
         >
           ← Kembali ke detail event
         </Link>

@@ -1,0 +1,280 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { Armchair, BadgeCheck, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Loader2, SearchX } from 'lucide-react'
+import { SeatGrid, type SeatCell } from '@/components/seat-grid'
+
+type PublicBus = {
+  busId: string
+  busName: string
+  seatRows: number
+  seatCols: number
+  seatLayout: string | null
+  total: number
+  filled: number
+  seats: SeatCell[]
+}
+
+type Selected = { seat: string; name: string; busName: string }
+
+const REFRESH_MS = 3000
+
+export function PublicSeatMap({
+  eventId,
+  buses,
+  initialBusId,
+  highlightSeat,
+}: {
+  eventId: string
+  buses: { id: string; name: string }[]
+  initialBusId?: string | null
+  highlightSeat?: string | null
+}) {
+  const [selectedId, setSelectedId] = useState<string>(initialBusId ?? buses[0]?.id ?? '')
+  const [data, setData] = useState<PublicBus | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [selected, setSelected] = useState<Selected | null>(null)
+  const [rosterOpen, setRosterOpen] = useState(true)
+
+  const isMyBus = initialBusId != null && selectedId === initialBusId
+  const mySeat = isMyBus ? highlightSeat : null
+  const index = buses.findIndex((b) => b.id === selectedId)
+  const current = index >= 0 ? buses[index] : null
+
+  function step(dir: 1 | -1) {
+    if (buses.length === 0) return
+    const from = index >= 0 ? index : 0
+    setSelectedId(buses[(from + dir + buses.length) % buses.length].id)
+  }
+
+  useEffect(() => {
+    setSelectedId((prev) => (prev && buses.some((b) => b.id === prev) ? prev : initialBusId ?? buses[0]?.id ?? ''))
+  }, [buses, initialBusId])
+
+  useEffect(() => {
+    if (!selectedId) {
+      setData(null)
+      setLoading(false)
+      return
+    }
+    let cancelled = false
+    let inFlight = false
+
+    const load = async () => {
+      if (cancelled || inFlight) return
+      inFlight = true
+      try {
+        const res = await fetch(
+          `/api/public/seats?eventId=${encodeURIComponent(eventId)}&busId=${encodeURIComponent(selectedId)}`,
+          { cache: 'no-store' },
+        )
+        if (!res.ok || cancelled) return
+        const payload = (await res.json().catch(() => null)) as { buses?: PublicBus[] } | null
+        if (!payload || cancelled) return
+        const bus = payload.buses?.find((b) => b.busId === selectedId) ?? null
+        setData(bus)
+        setSelected((prev) => {
+          if (!prev || prev.busName !== bus?.busName) return prev
+          if (!bus || !bus.seats.some((s) => s.seat === prev.seat)) return null
+          return prev
+        })
+      } catch {
+        // abaikan, poll berikutnya
+      } finally {
+        if (!cancelled) {
+          inFlight = false
+          setLoading(false)
+        }
+      }
+    }
+
+    load()
+    const timer = setInterval(load, REFRESH_MS)
+    return () => {
+      cancelled = true
+      clearInterval(timer)
+    }
+  }, [eventId, selectedId])
+
+  return (
+    <div className="mt-4">
+      <div className="flex flex-wrap items-center gap-2">
+        {mySeat && (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#eef4fb] px-3 py-1 text-[11px] font-bold text-[#1b4f9c]">
+            <Armchair size={12} /> Kursi Anda: No {mySeat}
+          </span>
+        )}
+        {!loading && data && (
+          <span
+            className={`ml-auto rounded-full px-3 py-1 text-[11px] font-bold ${
+              data.filled === data.total ? 'bg-[#e6f4ea] text-[#2ca84a]' : 'bg-[#eef3fb] text-[#1b4f9c]'
+            }`}
+          >
+            {data.filled}/{data.total} terisi
+          </span>
+        )}
+      </div>
+
+      {buses.length > 1 && (
+        <div className="mt-3 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => step(-1)}
+            aria-label="Armada sebelumnya"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#dfe4e8] bg-white p-0 text-[#1b4f9c] transition-colors duration-150 hover:bg-[#eef4fb] active:scale-95"
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <p className="min-w-0 flex-1 truncate text-center text-xs font-bold text-[#1b3555]">
+            {current?.name ?? '—'}
+            <span className="ml-1.5 text-[11px] font-semibold text-[#9aa3af]">
+              {index >= 0 ? `${index + 1}/${buses.length}` : ''}
+            </span>
+          </p>
+          <button
+            type="button"
+            onClick={() => step(1)}
+            aria-label="Armada berikutnya"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#dfe4e8] bg-white p-0 text-[#1b4f9c] transition-colors duration-150 hover:bg-[#eef4fb] active:scale-95"
+          >
+            <ChevronRight size={16} />
+          </button>
+        </div>
+      )}
+
+      <div className="mt-3">
+        {loading ? (
+          <div className="flex items-center justify-center gap-2 rounded-xl bg-[#f8fafc] py-8 text-xs font-semibold text-[#657080]">
+            <Loader2 size={15} className="animate-spin" /> Memuat peta kursi…
+          </div>
+        ) : !data ? (
+          <div className="flex flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-[#dfe4e8] px-4 py-8 text-center">
+            <SearchX size={22} className="text-[#c3cad2]" />
+            <p className="text-xs font-bold text-[#657080]">Peta kursi belum tersedia</p>
+          </div>
+        ) : data.seatRows > 0 && data.seatCols > 0 ? (
+          <>
+            <p className="text-xs font-bold text-[#1b3555]">{data.busName}</p>
+            <SeatGrid
+              bus={data}
+              highlightSeat={mySeat}
+              onSelect={(s) => setSelected({ seat: s.seat, name: s.name, busName: data.busName })}
+            />
+            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] font-semibold text-[#657080]">
+              <span className="flex items-center gap-1.5">
+                <span className="inline-block h-3 w-3 rounded bg-[#2ca84a]" /> Terisi{' '}
+                <span className="font-black text-[#2ca84a]">{data.filled}</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="inline-block h-3 w-3 rounded bg-[#eef1f4]" /> Kosong{' '}
+                <span className="font-black text-[#657080]">{data.total - data.filled}</span>
+              </span>
+              {mySeat && (
+                <span className="flex items-center gap-1.5">
+                  <span className="inline-block h-3 w-3 rounded bg-[#1b4f9c] ring-2 ring-[#e8c54a] ring-offset-1" />{' '}
+                  Kursi Anda
+                </span>
+              )}
+              <span className="ml-auto text-[11px] text-[#9aa3af]">Ketuk kursi hijau untuk lihat nama</span>
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-[#dfe4e8] px-4 py-8 text-center">
+            <Armchair size={22} className="text-[#c3cad2]" />
+            <p className="text-xs font-bold text-[#657080]">Belum ada layout kursi</p>
+            <p className="text-[11px] text-[#9aa3af]">Peta kursi armada ini diatur oleh admin.</p>
+          </div>
+        )}
+      </div>
+
+      {!loading && data && data.seats.length > 0 && (
+        <div className="mt-4 overflow-hidden rounded-2xl border border-[#edf0f3]">
+          <button
+            type="button"
+            onClick={() => setRosterOpen((o) => !o)}
+            aria-expanded={rosterOpen}
+            aria-label={rosterOpen ? 'Tutup daftar nama' : 'Buka daftar nama'}
+            className="flex w-full items-center justify-between gap-3 bg-[linear-gradient(100deg,#071e3d_0%,#0d2850_55%,#163d78_100%)] px-4 py-2.5 text-left transition-[filter] duration-150 hover:brightness-110 active:scale-[0.995]"
+          >
+            <p className="min-w-0 truncate text-sm font-bold text-white">Daftar Nama — {data.busName}</p>
+            <span className="flex shrink-0 items-center gap-2">
+              <span className="rounded-full border border-[#f5b915]/30 bg-[#f5b915]/12 px-2.5 py-0.5 text-[11px] font-bold tabular-nums text-[#f7dda1]">
+                {data.filled}/{data.total} hadir
+              </span>
+              {rosterOpen ? <ChevronUp size={14} className="text-[#f7dda1]" /> : <ChevronDown size={14} className="text-[#f7dda1]" />}
+            </span>
+          </button>
+          {rosterOpen && (
+            <div className="divide-y divide-[#f0f3f6]">
+            {data.seats.map((s) => {
+              const isMine = mySeat != null && s.seat != null && s.seat === mySeat
+              return (
+                <div key={s.order} className={`flex items-center gap-x-2.5 px-3 py-2 ${isMine ? 'bg-[#eef4fb]' : ''}`}>
+                  <span
+                    className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold tabular-nums ${
+                      s.present ? 'bg-emerald-100 text-emerald-600' : 'bg-[#eef3fb] text-[#163d78]'
+                    }`}
+                  >
+                    {s.seat ?? s.order}
+                  </span>
+                  <p className="min-w-0 flex-1 truncate text-[13px] font-bold text-[#1b3555]">
+                    {s.name}
+                    {isMine && (
+                      <span className="ml-1.5 text-[10px] font-bold uppercase tracking-wide text-[#1b4f9c]">
+                        Kursi Anda
+                      </span>
+                    )}
+                  </p>
+                  {s.present ? (
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-600">
+                      <BadgeCheck size={11} /> Hadir
+                    </span>
+                  ) : (
+                    <span className="inline-flex shrink-0 items-center rounded-full bg-[#f1f3f5] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#9aa3af]">
+                      Belum
+                    </span>
+                  )}
+                </div>
+              )
+            })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {selected && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-5 backdrop-blur-sm">
+          <div className="animate-fade-up w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wide text-[#9aa3af]">Kursi terisi</p>
+                <h3 className="mt-0.5 text-lg font-black text-[#1b3555]">Kursi {selected.seat}</h3>
+              </div>
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#e6f4ea] text-[#2ca84a]">
+                <Armchair size={20} />
+              </span>
+            </div>
+            <div className="mt-4 space-y-2">
+              <div className="rounded-xl bg-[#f8fafc] p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-[#9aa3af]">Nama Peserta</p>
+                <p className="mt-0.5 text-xl font-black text-[#1b3555]">{selected.name}</p>
+              </div>
+              <div className="rounded-xl bg-[#f8fafc] p-3 text-xs font-semibold text-[#657080]">
+                {selected.busName}
+              </div>
+            </div>
+            <div className="mt-5 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setSelected(null)}
+                className="rounded-full bg-[#1b4f9c] px-5 py-2.5 text-xs font-bold text-white transition-colors hover:bg-[#143d79] active:scale-95"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

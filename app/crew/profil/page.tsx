@@ -6,7 +6,7 @@ import type { Prisma } from '@prisma/client'
 import { requireCrewSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { formatWaktuLengkap } from '@/lib/dates'
-import { parseItinerary, type ItineraryRow } from '@/lib/itinerary'
+import { parseItinerary, groupItineraryByDay, type ItineraryRow } from '@/lib/itinerary'
 import { SessionGuard } from '@/components/crew/session-guard'
 import { LogoutButton } from '@/components/admin/logout-button'
 import { CrewProfileEditor } from '@/components/crew/profile-editor'
@@ -78,7 +78,7 @@ export default async function CrewProfilPage({ searchParams }: { searchParams: S
   type ItineraryGroup = {
     event: { id: string; title: string; date: Date; location: string }
     buses: string[]
-    rows: ItineraryRow[]
+    dayGroups: { day: number; rows: ItineraryRow[] }[]
   }
 
   let itineraryGroups: ItineraryGroup[] = []
@@ -94,7 +94,7 @@ export default async function CrewProfilPage({ searchParams }: { searchParams: S
         },
       },
     })
-    const groupMap = new Map<string, { event: ItineraryGroup['event']; buses: Set<string>; rows: ItineraryRow[] }>()
+    const groupMap = new Map<string, { event: ItineraryGroup['event']; buses: Set<string>; dayGroups: ItineraryGroup['dayGroups'] }>()
     for (const w of workers) {
       const ev = w.bus.event
       let group = groupMap.get(ev.id)
@@ -102,13 +102,13 @@ export default async function CrewProfilPage({ searchParams }: { searchParams: S
         group = {
           event: { id: ev.id, title: ev.title, date: ev.date, location: ev.location },
           buses: new Set(),
-          rows: parseItinerary(ev.panduanItinerary),
+          dayGroups: groupItineraryByDay(parseItinerary(ev.panduanItinerary)),
         }
         groupMap.set(ev.id, group)
       }
       group.buses.add(w.bus.name)
     }
-    itineraryGroups = [...groupMap.values()].map((g) => ({ event: g.event, buses: [...g.buses], rows: g.rows }))
+    itineraryGroups = [...groupMap.values()].map((g) => ({ event: g.event, buses: [...g.buses], dayGroups: g.dayGroups }))
   }
 
   const deel = 'rounded-xl px-2 py-2 text-center text-xs font-bold transition-colors duration-200'
@@ -194,30 +194,41 @@ export default async function CrewProfilPage({ searchParams }: { searchParams: S
                       <CircleUserRound size={11} /> {group.buses.join(', ')}
                     </p>
 
-                    {group.rows.length === 0 ? (
+                    {group.dayGroups.length === 0 ? (
                       <p className="mt-3 rounded-xl bg-[#f8fafc] px-4 py-3 text-xs text-[#657080]">
                         Itinerary belum diisi untuk {group.event.title}.
                       </p>
                     ) : (
-                      <div className="mt-4 overflow-x-auto">
-                        <table className="w-full border-collapse text-left text-sm">
-                          <thead>
-                            <tr className="border-b border-[#dfe4e8] text-[11px] font-bold uppercase tracking-wide text-[#657080]">
-                              <th className="px-2 py-2">Waktu</th>
-                              <th className="px-2 py-2">Agenda</th>
-                              <th className="px-2 py-2">Keterangan</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {group.rows.map((row, i) => (
-                              <tr key={`${row.time}-${i}`} className="border-b border-[#f1f3f5] last:border-0">
-                                <td className="whitespace-nowrap px-2 py-2.5 font-bold text-[#1b4f9c]">{row.time}</td>
-                                <td className="px-2 py-2.5 font-semibold text-[#1b3555]">{row.agenda}</td>
-                                <td className="px-2 py-2.5 text-[#657080]">{row.keterangan || '–'}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                      <div className="mt-4 space-y-6">
+                        {group.dayGroups.map((dayGroup) => (
+                          <div key={dayGroup.day}>
+                            {group.dayGroups.length > 1 && (
+                              <h4 className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-[#eef4fb] px-3 py-1 text-xs font-bold text-[#1b4f9c]">
+                                <CalendarDays size={13} /> Day {dayGroup.day}
+                              </h4>
+                            )}
+                            <div className="overflow-x-auto">
+                              <table className="w-full border-collapse text-left text-sm">
+                                <thead>
+                                  <tr className="border-b border-[#dfe4e8] text-[11px] font-bold uppercase tracking-wide text-[#657080]">
+                                    <th className="px-2 py-2">Waktu</th>
+                                    <th className="px-2 py-2">Agenda</th>
+                                    <th className="px-2 py-2">Keterangan</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {dayGroup.rows.map((row, i) => (
+                                    <tr key={`${dayGroup.day}-${row.time}-${i}`} className="border-b border-[#dfe4e8] last:border-0">
+                                      <td className="whitespace-nowrap px-2 py-2.5 font-bold text-[#1b4f9c]">{row.time}</td>
+                                      <td className="px-2 py-2.5 font-semibold text-[#1b3555]">{row.agenda}</td>
+                                      <td className="px-2 py-2.5 text-[#657080]">{row.keterangan || '–'}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>

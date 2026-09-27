@@ -17,6 +17,9 @@ export async function GET(request: NextRequest) {
           id: true,
           name: true,
           eventId: true,
+          seatRows: true,
+          seatCols: true,
+          seatLayout: true,
           event: { select: { title: true, status: true } },
         },
       },
@@ -41,13 +44,16 @@ export async function GET(request: NextRequest) {
       busId: a.busId,
       busName: a.bus.name,
       eventTitle: a.bus.event.title,
+      seatRows: a.bus.seatRows,
+      seatCols: a.bus.seatCols,
+      seatLayout: a.bus.seatLayout,
       total: participants.length,
       filled: participants.filter((p) => p.scannedAt !== null).length,
       seats: participants.map((p) => ({
         seat: p.seat,
         order: p.order,
         name: p.name,
-        filled: p.scannedAt !== null,
+        present: p.scannedAt !== null,
       })),
     })
   }

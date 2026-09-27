@@ -2,33 +2,23 @@
 
 import { useEffect, useState } from 'react'
 import { Armchair, Bus, Loader2 } from 'lucide-react'
-
-type Seat = {
-  seat: string | null
-  order: number
-  name: string
-  filled: boolean
-}
+import { SeatGrid, type SeatCell } from '@/components/seat-grid'
 
 type BusSeats = {
   busId: string
   busName: string
   eventTitle: string
+  seatRows: number
+  seatCols: number
+  seatLayout: string | null
   total: number
   filled: number
-  seats: Seat[]
+  seats: SeatCell[]
 }
 
 type Selected = { seat: string; name: string; busName: string; eventTitle: string }
 
 const REFRESH_MS = 3000
-const PER_ROW = 4
-
-function chunkSeats<T>(seats: T[], size: number): T[][] {
-  const rows: T[][] = []
-  for (let i = 0; i < seats.length; i += size) rows.push(seats.slice(i, i + size))
-  return rows
-}
 
 export function CrewSeatMap() {
   const [buses, setBuses] = useState<BusSeats[]>([])
@@ -121,47 +111,31 @@ export function CrewSeatMap() {
               </div>
 
               <div className="mt-3 space-y-2">
-                {chunkSeats(bus.seats, PER_ROW).map((row, ri) => (
-                  <div key={ri} className="flex items-center gap-2.5 sm:gap-4">
-                    {[row.slice(0, 2), row.slice(2, 4)].map((pair, pi) => (
-                      <div key={pi} className="grid min-w-0 flex-1 grid-cols-2 gap-1.5">
-                        {pair.map((s, si) => {
-                          const label = s.seat ?? '—'
-                          return (
-                            <button
-                              key={`${ri}-${pi}-${si}`}
-                              type="button"
-                              disabled={!s.filled}
-                              onClick={() =>
-                                s.seat && setSelected({ seat: s.seat, name: s.name, busName: bus.busName, eventTitle: bus.eventTitle })
-                              }
-                              title={s.filled ? s.name : undefined}
-                              className={`flex aspect-square w-full min-w-0 items-center justify-center overflow-hidden rounded-lg p-0 text-sm font-bold tabular-nums leading-none transition-colors duration-150 ${
-                                s.filled
-                                  ? 'bg-[#2ca84a] text-white shadow-sm hover:bg-[#219b42] active:scale-95'
-                                  : 'bg-[#eef1f4] text-[#9aa3af]'
-                              } ${s.seat === null ? 'cursor-default' : ''}`}
-                            >
-                              {label}
-                            </button>
-                          )
-                        })}
-                      </div>
-                    ))}
+                {bus.seatRows > 0 && bus.seatCols > 0 ? (
+                  <>
+                    <SeatGrid
+                      bus={bus}
+                      onSelect={(s) => setSelected({ seat: s.seat, name: s.name, busName: bus.busName, eventTitle: bus.eventTitle })}
+                    />
+                    <div className="flex items-center gap-4 text-[11px] font-semibold text-[#657080]">
+                      <span className="flex items-center gap-1.5">
+                        <span className="inline-block h-3 w-3 rounded bg-[#2ca84a]" /> Terisi{' '}
+                        <span className="font-black text-[#2ca84a]">{bus.filled}</span>
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="inline-block h-3 w-3 rounded bg-[#eef1f4]" /> Kosong{' '}
+                        <span className="font-black text-[#657080]">{bus.total - bus.filled}</span>
+                      </span>
+                      <span className="ml-auto text-[11px] text-[#9aa3af]">Ketuk kursi hijau untuk lihat nama</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-[#dfe4e8] px-4 py-8 text-center">
+                    <Armchair size={22} className="text-[#c3cad2]" />
+                    <p className="text-xs font-bold text-[#657080]">Belum ada layout kursi</p>
+                    <p className="text-[11px] text-[#9aa3af]">Peta kursi armada ini diatur oleh admin.</p>
                   </div>
-                ))}
-              </div>
-
-              <div className="mt-3 flex items-center gap-4 text-[11px] font-semibold text-[#657080]">
-                <span className="flex items-center gap-1.5">
-                  <span className="inline-block h-3 w-3 rounded bg-[#2ca84a]" /> Terisi{' '}
-                  <span className="font-black text-[#2ca84a]">{bus.filled}</span>
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="inline-block h-3 w-3 rounded bg-[#eef1f4]" /> Kosong{' '}
-                  <span className="font-black text-[#657080]">{bus.total - bus.filled}</span>
-                </span>
-                <span className="ml-auto text-[11px] text-[#9aa3af]">Ketuk kursi hijau untuk lihat nama</span>
+                )}
               </div>
             </div>
           ))

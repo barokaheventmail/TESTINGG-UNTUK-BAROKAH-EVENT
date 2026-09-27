@@ -1,10 +1,11 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
-import { BookOpen, Clock3, MapPin, Phone } from 'lucide-react'
+import { BookOpen, CalendarDays, Clock3, MapPin, Phone } from 'lucide-react'
 import { prisma } from '@/lib/db'
-import { parseItinerary } from '@/lib/itinerary'
+import { parseItinerary, groupItineraryByDay } from '@/lib/itinerary'
 import { BackLink } from '@/components/site'
 import { EventNavbar } from '@/components/event-navbar'
+import { PublicSeatMap } from '@/components/public-seat-map'
 
 export const dynamic = 'force-dynamic'
 
@@ -57,13 +58,37 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return { title: `Panduan Peserta – ${event?.title ?? 'Event'} | Barokah Tour and Travel`, robots: { index: false } }
 }
 
-export default async function EventPanduanPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function EventPanduanPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ token?: string }>
+}) {
   const { id } = await params
+  const sp = await searchParams
   const event = await getEvent(id)
   if (!event) notFound()
 
+  const participantToken = (sp.token ?? '').trim().slice(0, 200)
+  const participant = participantToken
+    ? await prisma.participant.findUnique({
+        where: { token: participantToken },
+        select: { id: true, eventId: true, busId: true, seat: true, name: true },
+      })
+    : null
+  const ownBus = participant && participant.eventId === id ? participant : null
+
+  const buses = await prisma.bus.findMany({
+    where: { eventId: id },
+    select: { id: true, name: true },
+    orderBy: { order: 'asc' },
+  })
+
   const itinerary = parseItinerary(event.panduanItinerary)
   const isEmpty = itinerary.length === 0
+  const dayGroups = groupItineraryByDay(itinerary)
+  const multiDay = dayGroups.length > 1
 
   return (
     <main className="min-h-screen bg-[#f4f7fa] pb-12">
@@ -105,25 +130,36 @@ export default async function EventPanduanPage({ params }: { params: Promise<{ i
             {itinerary.length > 0 && (
               <section className="border border-[#dfe4e8] bg-white p-5">
                 <h2 className="text-xl font-bold text-[#1b3555]">Itinerary Perjalanan</h2>
-                <div className="mt-4 overflow-x-auto">
-                  <table className="w-full border-collapse text-left text-sm">
-                    <thead>
-                      <tr className="border-b border-[#dfe4e8] text-[11px] font-bold uppercase tracking-wide text-[#657080]">
-                        <th className="px-2 py-2">Waktu</th>
-                        <th className="px-2 py-2">Agenda</th>
-                        <th className="px-2 py-2">Keterangan</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {itinerary.map((item, i) => (
-                        <tr key={`${item.time}-${i}`} className="border-b border-[#dfe4e8] last:border-0">
-                          <td className="whitespace-nowrap px-2 py-2.5 font-bold text-[#1b4f9c]">{item.time}</td>
-                          <td className="px-2 py-2.5 font-semibold text-[#1b3555]">{item.agenda}</td>
-                          <td className="px-2 py-2.5 text-[#657080]">{item.keterangan || '–'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="mt-4 space-y-6">
+                  {dayGroups.map((group) => (
+                    <div key={group.day}>
+                      {multiDay && (
+                        <h3 className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-[#eef4fb] px-3 py-1 text-xs font-bold text-[#1b4f9c]">
+                          <CalendarDays size={13} /> Day {group.day}
+                        </h3>
+                      )}
+                      <div className="overflow-x-auto">
+                        <table className="w-full border-collapse text-left text-sm">
+                          <thead>
+                            <tr className="border-b border-[#dfe4e8] text-[11px] font-bold uppercase tracking-wide text-[#657080]">
+                              <th className="px-2 py-2">Waktu</th>
+                              <th className="px-2 py-2">Agenda</th>
+                              <th className="px-2 py-2">Keterangan</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {group.rows.map((item, i) => (
+                              <tr key={`${group.day}-${item.time}-${i}`} className="border-b border-[#dfe4e8] last:border-0">
+                                <td className="whitespace-nowrap px-2 py-2.5 font-bold text-[#1b4f9c]">{item.time}</td>
+                                <td className="px-2 py-2.5 font-semibold text-[#1b3555]">{item.agenda}</td>
+                                <td className="px-2 py-2.5 text-[#657080]">{item.keterangan || '–'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </section>
             )}
@@ -319,6 +355,22 @@ export default async function EventPanduanPage({ params }: { params: Promise<{ i
                 ))}
               </ol>
             </section>
+
+            {buses.length > 0 && (
+              <section className="border border-[#dfe4e8] bg-white p-5">
+                <h2 className="text-xl font-bold text-[#1b3555]">Peta Kursi &amp; Daftar Nama</h2>
+                <p className="mt-1 text-xs leading-relaxed text-[#657080]">
+                  Cek posisi kursi di armada Anda sebelum keberangkatan. Kursi hijau menandakan sudah terisi penumpang.
+                  Gunakan tombol panah untuk berpindah armada.
+                </p>
+                <PublicSeatMap
+                  eventId={id}
+                  buses={buses}
+                  initialBusId={ownBus?.busId ?? null}
+                  highlightSeat={ownBus?.seat ?? null}
+                />
+              </section>
+            )}
 
             </div>
         </>
