@@ -3,7 +3,8 @@ import { randomUUID } from 'crypto'
 import { requireAdminSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
-import { buildPreview, parseWorkbook } from '@/lib/excel'
+import { buildPreview, parseWorkbook, type ExcelParseResult } from '@/lib/excel'
+import { conflictSummary, planImport, type ImportConflict } from '@/lib/import-match'
 import { ticketCodeFromToken } from '@/lib/scan'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024
@@ -12,6 +13,52 @@ const ACCEPTED_EXT = ['xlsx', 'xlsm', 'xls', 'csv', 'ods'] as const
 const ACCEPTED_LABEL = '.xlsx, .xlsm, .xls, .csv, .ods'
 
 type Params = { params: Promise<{ id: string }> }
+
+type ForecastBus = { name: string; created: number; updated: number; conflicts: number; duplicates: number }
+type Forecast = {
+  created: number
+  updated: number
+  duplicates: number
+  forced: number
+  buses: ForecastBus[]
+  conflicts: (ImportConflict & { bus: string })[]
+}
+
+/**
+ * Hitung dulu apa yang AKAN terjadi kalau file ini disimpan, tanpa menulis apa pun.
+ *
+ * Ini yang membuat import tidak diam-diam: admin bisa melihat "3 baru · 12
+ * diperbarui · 1 bentrok" beserta nama yang bentrok SEBELUM menekan Simpan,
+ * bukan baru sadar setelah data salah simpan.
+ */
+async function buildForecast(eventId: string, parsed: ExcelParseResult, forceOrder: boolean): Promise<Forecast> {
+  const buses = await prisma.bus.findMany({
+    where: { eventId },
+    select: {
+      name: true,
+      participants: { select: { id: true, order: true, name: true, phone: true }, orderBy: { order: 'asc' } },
+    },
+  })
+  const byName = new Map(buses.map((b) => [b.name, b]))
+
+  const out: Forecast = { created: 0, updated: 0, duplicates: 0, forced: 0, buses: [], conflicts: [] }
+  for (const bus of parsed.buses) {
+    const plan = planImport({ existing: byName.get(bus.name)?.participants ?? [], rows: bus.participants, forceByOrder: forceOrder })
+    out.created += plan.created
+    out.updated += plan.updated
+    out.duplicates += plan.duplicates
+    out.forced += plan.forced
+    out.conflicts.push(...plan.conflicts.map((c) => ({ ...c, bus: bus.name })))
+    out.buses.push({
+      name: bus.name,
+      created: plan.created,
+      updated: plan.updated,
+      conflicts: plan.conflicts.length,
+      duplicates: plan.duplicates,
+    })
+  }
+  return out
+}
 
 export async function POST(request: NextRequest, { params }: Params) {
   const session = await requireAdminSession()
@@ -42,12 +89,17 @@ export async function POST(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: `Format file harus salah satu dari ${ACCEPTED_LABEL}.` }, { status: 400 })
   }
 
-  // Preview: parse saja, tidak menyentuh database. Admin bisa cek dulu cara
-  // file dibaca baru menekan Simpan.
+  // Preview: parse saja, tidak menulis apa pun. Admin bisa cek dulu cara file
+  // dibaca — termasuk prediksi peserta yang akan ditambah/diperbarui dan baris
+  // yang tidak bisa disimpan — baru menekan Simpan.
   const isPreview = formData.get('preview') === '1'
   // "overwrite" membuat sel kosong menimpa data yang sudah ada. Default: sel
   // kosong tidak menghapus data lama.
   const overwriteEmpty = formData.get('overwrite') === '1'
+  // "forceOrder" mengembalikan pencocokan lewat kolom "No" seperti versi lama.
+  // Bahaya: kalau nomor di file bergeser, nama peserta bisa tertukar. Karena itu
+  // harus dicentang manual oleh admin, dan tercatat di log aktivitas.
+  const forceOrder = formData.get('forceOrder') === '1'
 
   let parsed
   try {
@@ -77,7 +129,8 @@ export async function POST(request: NextRequest, { params }: Params) {
   }
 
   if (isPreview) {
-    return NextResponse.json({ ok: true, preview: true, ...buildPreview(parsed) })
+    const forecast = await buildForecast(id, parsed, forceOrder)
+    return NextResponse.json({ ok: true, preview: true, ...buildPreview(parsed), forecast })
   }
 
   const busResults: { name: string; created: number; updated: number; skipped: number }[] = []
