@@ -57,37 +57,50 @@ export async function POST(request: NextRequest, { params }: Params) {
   const created: { busName: string; username: string; password: string }[] = []
   let nextNum = 1
 
-  if (plan.length > 0) {
-    await prisma.$transaction(async (tx) => {
-      for (const { bus, needed } of plan) {
-        for (let i = 0; i < needed; i++) {
-          let user: { id: string; username: string } | null = null
-          // Coba dengan nomor bebas terkecil; bila bentrok (P2002), lanjutkan naik.
-          for (let attempt = 0; attempt < 50 && !user; attempt++) {
-            while (used.has(nextNum)) nextNum += 1
-            const username = prefix + nextNum
-            const password = crewPassword(username)
-            const passwordHash = await bcrypt.hash(password, 10)
-            try {
-              user = await tx.user.create({ data: { username, passwordHash, role: 'CREW' } })
-              created.push({ busName: bus.name, username, password })
-              used.add(nextNum)
-              nextNum += 1
-            } catch (err) {
-              if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
-                nextNum += 1
-                continue
-              }
-              throw err
-            }
-          }
-          if (!user) throw new Error('Gagal membuat username unik.')
-          const order = bus.workers.length + i + 1
-          await tx.busWorker.create({ data: { busId: bus.id, userId: user.id, order } })
-        }
-      }
-      await tx.event.update({ where: { id }, data: { crewPrefix: prefix } })
+  // Siapkan data user (username & password) di awal
+  const plannedUsers: { bus: typeof plan[0]['bus']; order: number; username: string; password: string; hash: string }[] = []
+  
+  for (const { bus, needed } of plan) {
+    for (let i = 0; i < needed; i++) {
+      while (used.has(nextNum)) nextNum += 1
+      const username = prefix + nextNum
+      used.add(nextNum)
+      
+      plannedUsers.push({ 
+        bus, 
+        order: bus.workers.length + i + 1, 
+        username, 
+        password: crewPassword(username), 
+        hash: '' 
+      })
+      nextNum += 1
+    }
+  }
+
+  // Hash seluruh password secara paralel DI LUAR transaksi agar tidak timeout (hashing bcrypt sangat berat)
+  await Promise.all(
+    plannedUsers.map(async (pu) => {
+      pu.hash = await bcrypt.hash(pu.password, 10)
     })
+  )
+
+  if (plannedUsers.length > 0) {
+    try {
+      await prisma.$transaction(async (tx) => {
+        for (const pu of plannedUsers) {
+          const user = await tx.user.create({ data: { username: pu.username, passwordHash: pu.hash, role: 'CREW' } })
+          await tx.busWorker.create({ data: { busId: pu.bus.id, userId: user.id, order: pu.order } })
+          created.push({ busName: pu.bus.name, username: pu.username, password: pu.password })
+        }
+        await tx.event.update({ where: { id }, data: { crewPrefix: prefix } })
+      }, {
+        maxWait: 15000,
+        timeout: 60000 // Beri kelonggaran waktu 60 detik jika armada sangat banyak
+      })
+    } catch (err) {
+      logger.error('gagal membuat akun crew', { error: err instanceof Error ? err.message : String(err) })
+      return NextResponse.json({ error: 'Gagal menyimpan akun ke database.' }, { status: 500 })
+    }
   }
 
   await prisma.activityLog.create({
