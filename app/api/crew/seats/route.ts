@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireCrewSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { countPresent, mapCrewSeats } from '@/lib/crew-seats'
 
 export async function GET(request: NextRequest) {
   const session = await requireCrewSession()
@@ -34,12 +35,6 @@ export async function GET(request: NextRequest) {
       where: { busId: a.busId },
       select: { seat: true, order: true, name: true, scannedAt: true },
     })
-    participants.sort((x, y) => {
-      const xs = Number.parseInt(x.seat ?? '', 10)
-      const ys = Number.parseInt(y.seat ?? '', 10)
-      if (!Number.isNaN(xs) && !Number.isNaN(ys)) return xs - ys
-      return (x.seat ?? '').localeCompare(y.seat ?? '')
-    })
     buses.push({
       busId: a.busId,
       busName: a.bus.name,
@@ -48,13 +43,8 @@ export async function GET(request: NextRequest) {
       seatCols: a.bus.seatCols,
       seatLayout: a.bus.seatLayout,
       total: participants.length,
-      filled: participants.filter((p) => p.scannedAt !== null).length,
-      seats: participants.map((p) => ({
-        seat: p.seat,
-        order: p.order,
-        name: p.name,
-        present: p.scannedAt !== null,
-      })),
+      filled: countPresent(participants),
+      seats: mapCrewSeats(participants),
     })
   }
 
