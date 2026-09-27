@@ -2,13 +2,22 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdminSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
+import {
+  buildExportCsv,
+  buildExportWorkbook,
+  exportFileName,
+  type ExportBus,
+  type ExportStatusFilter,
+} from '@/lib/export'
+
+// exceljs memakai API Node, jadi route harus jalan di runtime Node.
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
 type Params = { params: Promise<{ id: string }> }
 
-function csvCell(v: string | number | Date | null | undefined): string {
-  if (v instanceof Date) v = v.toISOString()
-  const s = v === null || v === undefined ? '' : String(v)
-  return `"${s.replace(/"/g, '""')}"`
+function parseStatus(raw: string | null): ExportStatusFilter {
+  return raw === 'hadir' || raw === 'belum' ? raw : 'all'
 }
 
 export async function GET(request: NextRequest, { params }: Params) {
@@ -18,39 +27,76 @@ export async function GET(request: NextRequest, { params }: Params) {
   }
 
   const { id } = await params
-  const event = await prisma.event.findUnique({ where: { id } })
+  const sp = request.nextUrl.searchParams
+  const busParam = sp.get('bus')
+  const status = parseStatus(sp.get('status'))
+  const format = sp.get('format') === 'csv' ? 'csv' : 'xlsx'
+
+  const event = await prisma.event.findUnique({
+    where: { id },
+    include: { buses: { orderBy: { order: 'asc' } } },
+  })
   if (!event) return NextResponse.json({ error: 'Event tidak ditemukan.' }, { status: 404 })
+
+  if (busParam && busParam !== 'all' && !event.buses.some((b) => b.id === busParam)) {
+    return NextResponse.json({ error: 'Armada tidak ditemukan.' }, { status: 400 })
+  }
 
   const participants = await prisma.participant.findMany({
     where: { eventId: id },
-    include: { bus: { select: { name: true, order: true } }, scannedBy: { select: { username: true } } },
+    include: { bus: { select: { id: true, name: true, order: true } }, scannedBy: { select: { username: true } } },
     orderBy: [{ bus: { order: 'asc' } }, { order: 'asc' }],
   })
 
-  const header = ['No', 'Nama', 'Tempat Lahir', 'Tgl Lahir', 'No HP', 'Kursi', 'Kamar', 'VW', 'Bus', 'Status', 'Waktu Scan', 'Crew']
-  const rows = participants.map((p) => [
-    p.order,
-    p.name,
-    p.birthPlace,
-    p.birthDate,
-    p.phone,
-    p.seat,
-    p.room,
-    p.vw,
-    p.bus.name,
-    p.scannedAt ? 'HADIR' : 'BELUM',
-    p.scannedAt,
-    p.scannedBy?.username,
-  ])
+  const grouped = new Map<string, ExportBus>()
+  for (const bus of event.buses) {
+    grouped.set(bus.id, { id: bus.id, name: bus.name, order: bus.order, participants: [] })
+  }
+  for (const p of participants) {
+    grouped.get(p.bus.id)?.participants.push({
+      order: p.order,
+      name: p.name,
+      birthPlace: p.birthPlace,
+      birthDate: p.birthDate,
+      phone: p.phone,
+      seat: p.seat,
+      room: p.room,
+      vw: p.vw,
+      scannedAt: p.scannedAt,
+      scannedBy: p.scannedBy?.username ?? null,
+    })
+  }
 
-  const csv = [header, ...rows].map((r) => r.map(csvCell).join(',')).join('\r\n')
-  const safeName = event.title.replace(/[^\w]+/g, '_').slice(0, 60) || 'event'
-  logger.info('export csv', { eventId: id, by: session.username, rows: participants.length })
+  const buses = [...grouped.values()].sort((a, b) => a.order - b.order || a.name.localeCompare(b.name))
+  const filter = { busId: busParam && busParam !== 'all' ? busParam : null, status }
+  const selectedBus = busParam && busParam !== 'all' ? buses.find((b) => b.id === busParam) ?? null : null
+  const input = { eventTitle: event.title, eventDate: event.date, buses }
+  const fileName = exportFileName(event.title, selectedBus?.name ?? null, status, format)
 
-  return new NextResponse('\uFEFF' + csv, {
+  logger.info('export peserta', {
+    eventId: id,
+    by: session.username,
+    format,
+    bus: selectedBus?.name ?? 'semua',
+    status,
+  })
+
+  if (format === 'csv') {
+    return new NextResponse('﻿' + buildExportCsv(input, filter), {
+      headers: {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': `attachment; filename="${fileName}"`,
+      },
+    })
+  }
+
+  const wb = buildExportWorkbook(input, filter)
+  const buffer = await wb.xlsx.writeBuffer()
+
+  return new NextResponse(Buffer.from(buffer), {
     headers: {
-      'Content-Type': 'text/csv; charset=utf-8',
-      'Content-Disposition': `attachment; filename="peserta-${safeName}.csv"`,
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': `attachment; filename="${fileName}"`,
     },
   })
 }

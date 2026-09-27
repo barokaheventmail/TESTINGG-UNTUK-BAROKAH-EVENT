@@ -34,12 +34,60 @@ pnpm dev                 # localhost:3000
 Cek kesehatan: `GET /api/health` → `{ "status": "ok", "db": "ok" }`.
 
 ## Format file Excel import
-- **1 sheet = 1 bus** (nama sheet menjadi nama bus, mis. `Bus 1`, `Bus 2`).
-- Kolom (baris pertama header, urutan bebas):
-  `No`, `Nama Lengkap`, `Tempat Lahir`, `Tanggal Lahir`, `No Telp/Hp`, `No Kursi`, `No Kamar`, `No VW`.
-- Tanggal Lahir: `dd/mm/yyyy`, `dd-mm-yyyy`, atau `yyyy-mm-dd`.
-- Baris tanpa Nama dibuang. Import ulang **tidak menggandakan** (dicocokkan via No + bus).
+Import dibuat toleran: file tidak harus sama persis dengan template. Yang wajib
+hanya ada **nama peserta**; sisanya dibaca seperlunya.
+
+- **Format file**: `.xlsx`, `.xlsm`, `.xls`, `.csv`, `.ods`.
+- **Armada**: 1 sheet = 1 armada (nama sheet jadi nama armada), **atau** pakai
+  kolom `Bus`/`Armada` di dalam sheet supaya 1 sheet bisa dipecah jadi beberapa
+  armada. Nama sheet generik (`Sheet1`) diganti nama file kalau tidak ada kolom armada.
+- **Header**: dicari sampai 200 baris pertama, jadi blok judul di atas header
+  (`DATA PESERTA`, namaPTO, dst.) tidak masalah. Nama kolom dicari lewat alias
+  luas + pola teks + cek typo, jadi `NO. TELP/HP`, `NAMA PESERTA (LENGKAP)`,
+  `TGL LAHIR`, `HP/WA` tetap dikenali. Kolom yang tidak dikenali **diabaikan**,
+  bukan bikin gagal.
+- **Kolom**: `No`, `Nama`, `Tempat Lahir`, `Tanggal Lahir`, `No Telp/Hp`,
+  `No Kursi`, `No Kamar`, `No VW` (urutan bebas, boleh tidak lengkap).
+  Kolom yang hilang tapi isinya jelas (tanggal/HP) dikenali dari isi kolom.
+- **Tidak ada header sama sekali**: kolom dibaca berdasarkan urutan template
+  standar, dan laporan preview menandainya sebagai tebakan.
+- **Tanggal**: `dd/mm/yyyy`, `dd-mm-yy`, `yyyy-mm-dd`, `12 Maret 1998`, atau
+  sel tanggal Excel. Tanggal tidak valid (mis. `31/02`) dibiarkan kosong.
+- **TTL gabungan** `"Sukabumi, 12/03/1998"` dipecah jadi tempat lahir + tanggal lahir.
+- **No HP**: `+62`/spasi/tanda hubung dinormalkan ke format `08xx`; angka yang
+  kehilangan nol depan di Excel dikembalikan.
+- **Baris rekap** (`TOTAL`, `JUMLAH`, `TERIMA KASIH`) dan baris kosong tidak
+  dianggap peserta.
+- **No duplikat** dirapikan otomatis supaya tidak menimpa peserta lain.
+- **Import ulang** mencocokkan No + armada, jadi tidak menggandakan. Sel kosong
+  **tidak** menghapus data lama kecuali centang "Sel kosong menimpa data lama".
+- **Alur**: pilih file → **Cek File** (preview peta kolom, contoh data, daftar
+  baris yang dilewati) → **Simpan**. Tidak ada yang tersimpan sebelum Simpan.
 - Template: `/api/admin/template` (atau tombol **Unduh template Excel** di panel admin).
+
+## Export data peserta
+Tombol **Export** di panel admin (popover, di sebelah tombol import) mengunduh
+satu file Excel `.xlsx` yang sudah dikelompokkan per armada:
+
+- **Sheet `Rekap`**: judul event, tanggal acara, lalu tabel per armada
+  (`Peserta`, `Hadir`, `Belum`, `Kursi Terisi`, `Kamar Terisi`) + baris `TOTAL`.
+- **Sheet per armada**: `No, Nama, Tempat Lahir, Tgl Lahir, No HP, Kursi, Kamar,
+  VW, Status, Waktu Scan, Crew`. Nama sheet mengikuti nama armada (dibersihkan
+  supaya aman untuk Excel: maksimal 31 karakter, tetap unik).
+- **Filter** (dipilih di popover): armada (`Semua armada` / satu armada) dan
+  status (`Semua peserta` / `Sudah hadir` / `Belum hadir`).
+- **Rapi**: header tebal putih di atas biru tua, baris `HADIR` hijau dan `BELUM`
+  abu-abu, header membeku saat di-scroll, auto-filter, lebar kolom menyesuaikan,
+  serta **judul baris header berulang saat dicetak** (landscape, fit to width).
+- **Tanggal** ditulis `dd/MM/yyyy` dan waktu scan `dd/MM/yyyy HH:mm` memakai
+  komponen tanggal lokal, jadi tidak bergeser sehari dan sama dengan tampilan
+  tabel admin. No HP ditulis sebagai teks supaya tidak jadi notasi ilmiah.
+- Nama file: `peserta-<event>-<semua|bus-Nama>[-<status>].xlsx`.
+- Parameter API `GET /api/admin/events/<id>/export`:
+  `?bus=<id|all>&status=<all|hadir|belum>&format=<xlsx|csv>`. Tanpa parameter
+  menghasilkan Excel semua peserta. `format=csv` menghasilkan satu file CSV datar
+  (semua armada digabung, kolom `Bus` ikut disertakan) untuk kebutuhan lama.
+- Export hanya membaca data, tidak pernah menulis ke database.
 
 ## Deploy (Hostinger / VPS)
 1. Siapkan Postgres (mis. Hostinger Database), set `DATABASE_URL` dan `JWT_SECRET` yang kuat.
@@ -79,7 +127,7 @@ app/
   crew/               # halaman scanner crew
   tiket/[token]       # tiket publik ber-QR
   login/              # halaman login admin & crew
-lib/                  # db, auth (JWT), excel, logger, scan/Qr, dates
+lib/                  # db, auth (JWT), excel, export (xlsx), logger, scan/Qr, dates
 prisma/schema.prisma  # data model
 middleware.ts         # proteksi /admin (ADMIN) & /crew (CREW)
 ```

@@ -1,12 +1,13 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
-import { ArrowLeft, ArrowRight, Bus, CalendarDays, Download, History, MapPin, Printer, ShieldAlert } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Bus, CalendarDays, History, MapPin, Printer, ShieldAlert } from 'lucide-react'
 import { prisma } from '@/lib/db'
 import { formatWaktuLengkap } from '@/lib/dates'
 import { EditEvent } from '@/components/admin/edit-event'
 import { DeleteEvent } from '@/components/admin/delete-event'
 import { ImportExcel } from '@/components/admin/import-excel'
+import { ExportMenu } from '@/components/admin/export-menu'
 import { ParticipantTable, type RowBus } from '@/components/admin/participant-table'
 import { AddParticipant } from '@/components/admin/add-participant'
 import { ArmadaActions } from '@/components/admin/armada-actions'
@@ -141,13 +142,7 @@ export default async function EventDetail({
   const actionButtons = (
     <div className="flex flex-wrap items-center gap-2">
       <ImportExcel eventId={event.id} />
-      <a
-        href={`/api/admin/events/${event.id}/export`}
-        download
-        className="flex items-center gap-1.5 rounded-full border border-[#dfe4e8] bg-white px-4 py-2.5 text-sm font-bold text-[#1b3555] transition-colors duration-200 hover:bg-[#f1f3f5] active:scale-95"
-      >
-        <Download size={15} /> Export CSV
-      </a>
+      <ExportMenu eventId={event.id} buses={buses} />
       <Link
         href={`/admin/events/${event.id}/qr`}
         className="flex items-center gap-1.5 rounded-full bg-[#f5b915] px-5 py-2.5 text-sm font-bold text-[#1d2733] transition-colors duration-200 hover:bg-[#e4aa09] active:scale-95"
