@@ -17,6 +17,7 @@ export type SearchMatch = {
   token: string
   name: string
   order: number
+  birthDate: string | null
   busName: string
   eventTitle: string
   eventDate: string
@@ -252,9 +253,15 @@ export const TicketSearch = forwardRef<
               <dt className="text-[11px] font-semibold uppercase tracking-wide text-[#9aa3af]">Nomor Peserta</dt>
               <dd className="mt-0.5 font-semibold text-[#1b3555]">{selected.order}</dd>
             </div>
-            <div className="rounded-xl bg-[#f8fafc] p-3 sm:col-span-2">
-              <dt className="text-[11px] font-semibold uppercase tracking-wide text-[#9aa3af]">Tanggal</dt>
+            <div className="rounded-xl bg-[#f8fafc] p-3">
+              <dt className="text-[11px] font-semibold uppercase tracking-wide text-[#9aa3af]">Tanggal Event</dt>
               <dd className="mt-0.5 font-semibold text-[#1b3555]">{formatTanggalPendek(new Date(selected.eventDate))}</dd>
+            </div>
+            <div className="rounded-xl bg-[#f8fafc] p-3">
+              <dt className="text-[11px] font-semibold uppercase tracking-wide text-[#9aa3af]">Tanggal Lahir</dt>
+              <dd className="mt-0.5 font-semibold text-[#1b3555]">
+                {selected.birthDate ? formatTanggalPendek(new Date(selected.birthDate)) : '–'}
+              </dd>
             </div>
           </dl>
           <div className="border-t border-[#edf0f3] px-5 py-3 text-center">

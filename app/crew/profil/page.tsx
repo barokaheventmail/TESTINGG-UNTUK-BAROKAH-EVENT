@@ -111,7 +111,7 @@ export default async function CrewProfilPage({ searchParams }: { searchParams: S
     itineraryGroups = [...groupMap.values()].map((g) => ({ event: g.event, buses: [...g.buses], rows: g.rows }))
   }
 
-  const deel = 'flex-1 rounded-xl px-4 py-2 text-center text-xs font-bold transition-colors duration-200'
+  const deel = 'rounded-xl px-2 py-2 text-center text-xs font-bold transition-colors duration-200'
   const tabClass = (active: boolean) =>
     active ? `${deel} bg-[#f5b915] text-[#1d2733]` : `${deel} text-white/70 hover:bg-white/10 hover:text-white`
 
@@ -146,7 +146,7 @@ export default async function CrewProfilPage({ searchParams }: { searchParams: S
       </header>
 
       <div className="mx-auto mt-5 w-full max-w-md px-4">
-        <div className="flex gap-1.5 rounded-2xl border border-white/10 bg-white/5 p-1.5">
+        <div className="grid grid-cols-3 gap-1.5 rounded-2xl border border-white/10 bg-white/5 p-1.5">
           <Link
             href="/crew/profil"
             className={`${tabClass(tab === 'profile')} inline-flex items-center justify-center gap-1`}
@@ -154,16 +154,16 @@ export default async function CrewProfilPage({ searchParams }: { searchParams: S
             <CircleUserRound size={13} /> Profile
           </Link>
           <Link
-            href="/crew/profil?tab=riwayat"
-            className={`${tabClass(tab === 'riwayat')} inline-flex items-center justify-center gap-1`}
-          >
-            <History size={13} /> Riwayat
-          </Link>
-          <Link
             href="/crew/profil?tab=itinerary"
             className={`${tabClass(tab === 'itinerary')} inline-flex items-center justify-center gap-1`}
           >
             <Route size={13} /> Itinerary
+          </Link>
+          <Link
+            href="/crew/profil?tab=riwayat"
+            className={`${tabClass(tab === 'riwayat')} inline-flex items-center justify-center gap-1`}
+          >
+            <History size={13} /> Riwayat
           </Link>
         </div>
 

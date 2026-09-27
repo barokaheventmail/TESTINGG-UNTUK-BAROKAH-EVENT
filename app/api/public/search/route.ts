@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
       token: true,
       name: true,
       order: true,
+      birthDate: true,
       bus: {
         select: {
           name: true,
@@ -48,6 +49,7 @@ export async function GET(request: NextRequest) {
         token: p.token,
         name: p.name,
         order: p.order,
+        birthDate: p.birthDate ? p.birthDate.toISOString() : null,
         busName: p.bus.name,
         eventTitle: p.event.title,
         eventDate: p.event.date.toISOString(),

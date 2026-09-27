@@ -22,6 +22,13 @@ type BusSeats = {
 type Selected = { seat: string; name: string; busName: string; eventTitle: string }
 
 const REFRESH_MS = 3000
+const PER_ROW = 4
+
+function chunkSeats<T>(seats: T[], size: number): T[][] {
+  const rows: T[][] = []
+  for (let i = 0; i < seats.length; i += size) rows.push(seats.slice(i, i + size))
+  return rows
+}
 
 export function CrewSeatMap() {
   const [buses, setBuses] = useState<BusSeats[]>([])
@@ -113,28 +120,36 @@ export function CrewSeatMap() {
                 </span>
               </div>
 
-              <div className="mt-3 grid grid-cols-6 gap-1.5">
-                {bus.seats.map((s, i) => {
-                  const label = s.seat ?? `—`
-                  return (
-                    <button
-                      key={i}
-                      type="button"
-                      disabled={!s.filled}
-                      onClick={() =>
-                        s.seat && setSelected({ seat: s.seat, name: s.name, busName: bus.busName, eventTitle: bus.eventTitle })
-                      }
-                      title={s.filled ? s.name : undefined}
-                      className={`flex aspect-square items-center justify-center rounded-lg text-xs font-bold transition-colors duration-150 ${
-                        s.filled
-                          ? 'bg-[#2ca84a] text-white shadow-sm hover:bg-[#219b42] active:scale-95'
-                          : 'bg-[#eef1f4] text-[#9aa3af]'
-                      } ${s.seat === null ? 'cursor-default' : ''}`}
-                    >
-                      {label}
-                    </button>
-                  )
-                })}
+              <div className="mt-3 space-y-2">
+                {chunkSeats(bus.seats, PER_ROW).map((row, ri) => (
+                  <div key={ri} className="flex items-center gap-2.5 sm:gap-4">
+                    {[row.slice(0, 2), row.slice(2, 4)].map((pair, pi) => (
+                      <div key={pi} className="grid min-w-0 flex-1 grid-cols-2 gap-1.5">
+                        {pair.map((s, si) => {
+                          const label = s.seat ?? '—'
+                          return (
+                            <button
+                              key={`${ri}-${pi}-${si}`}
+                              type="button"
+                              disabled={!s.filled}
+                              onClick={() =>
+                                s.seat && setSelected({ seat: s.seat, name: s.name, busName: bus.busName, eventTitle: bus.eventTitle })
+                              }
+                              title={s.filled ? s.name : undefined}
+                              className={`flex aspect-square w-full min-w-0 items-center justify-center overflow-hidden rounded-lg p-0 text-sm font-bold tabular-nums leading-none transition-colors duration-150 ${
+                                s.filled
+                                  ? 'bg-[#2ca84a] text-white shadow-sm hover:bg-[#219b42] active:scale-95'
+                                  : 'bg-[#eef1f4] text-[#9aa3af]'
+                              } ${s.seat === null ? 'cursor-default' : ''}`}
+                            >
+                              {label}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                ))}
               </div>
 
               <div className="mt-3 flex items-center gap-4 text-[11px] font-semibold text-[#657080]">

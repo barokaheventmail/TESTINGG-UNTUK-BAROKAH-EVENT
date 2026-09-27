@@ -288,12 +288,9 @@ export function EventTickets({
         )}
 
         <div className="relative px-6 py-9 text-white md:px-10 md:py-12 drop-shadow-[0_2px_10px_rgba(9,32,74,0.85)]">
-          <div className="flex items-center gap-3">
-            <span className="h-px w-8 shrink-0 bg-gradient-to-r from-[#f9dc8c] to-[#d9a40c]" />
-            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#f5d79a]">
-              Event Wisata · Barokah Tour &amp; Travel
-            </p>
-          </div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.2em]">
+            Event Wisata · Barokah Tour &amp; Travel
+          </p>
 
           <h1 className="mt-3 text-3xl font-bold leading-tight tracking-tight md:text-4xl">{eventTitle}</h1>
 
