@@ -9,6 +9,9 @@ __v0_jsx-dev-runtime.ts
 # Environment variables
 .env
 .env*.local
+# PENTING: jangan pernah commit ini. Isinya kredensial Postgres, JWT_SECRET,
+# dan password admin/crew yang aktif. Salin manual ke server deploy.
+.env.production
 
 # Common ignores
 node_modules
